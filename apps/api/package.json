@@ -6,6 +6,8 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "node -e \"console.log('API build step is runtime-only for now')\"",
+    "migrate": "node src/scripts/migrate.js",
+    "db:status": "node src/scripts/db-status.js",
     "lint": "node -e \"console.log('Add lint config in a later step')\"",
     "test": "node -e \"console.log('Add tests in a later step')\""
   },

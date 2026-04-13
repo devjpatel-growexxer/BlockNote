@@ -12,6 +12,8 @@
     "dev": "npm run dev:web",
     "build:web": "npm run build --workspace @blocknote/web",
     "build:api": "npm run build --workspace @blocknote/api",
+    "db:migrate": "npm run migrate --workspace @blocknote/api",
+    "db:status": "npm run db:status --workspace @blocknote/api",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },

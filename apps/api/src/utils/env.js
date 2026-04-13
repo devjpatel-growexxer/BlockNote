@@ -1,11 +1,18 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, "../../../../");
+
+dotenv.config({ path: path.join(repoRoot, ".env") });
 
 const REQUIRED_SERVER_ENV = [
   "API_PORT",
   "WEB_ORIGIN",
   "DATABASE_URL",
+  "DATABASE_SSL",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
   "JWT_ACCESS_TTL_MINUTES",
@@ -33,6 +40,7 @@ export function getServerEnv() {
     apiPort: Number(process.env.API_PORT),
     webOrigin: process.env.WEB_ORIGIN,
     databaseUrl: process.env.DATABASE_URL,
+    databaseSsl: process.env.DATABASE_SSL === "true",
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
     jwtAccessTtlMinutes: Number(process.env.JWT_ACCESS_TTL_MINUTES),

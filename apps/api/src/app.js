@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import { registerDatabaseRoutes } from "./controllers/database-controller.js";
 import { apiErrorHandler } from "./middleware/error-handler.js";
 import { registerHealthRoutes } from "./controllers/health-controller.js";
 import { getServerEnv } from "./utils/env.js";
@@ -23,6 +24,7 @@ export function createApp() {
   });
 
   registerHealthRoutes(app);
+  registerDatabaseRoutes(app);
 
   app.use(apiErrorHandler);
 
