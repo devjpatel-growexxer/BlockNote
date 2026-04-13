@@ -16,8 +16,17 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: env.webOrigin,
-      credentials: true
+      origin(origin, callback) {
+        if (!origin || env.allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`CORS blocked for origin: ${origin}`));
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"]
     })
   );
   app.use(express.json({ limit: "1mb" }));

@@ -9,7 +9,6 @@ const repoRoot = path.resolve(__dirname, "../../../../");
 dotenv.config({ path: path.join(repoRoot, ".env") });
 
 const REQUIRED_SERVER_ENV = [
-  "API_PORT",
   "WEB_ORIGIN",
   "DATABASE_URL",
   "DATABASE_SSL",
@@ -37,8 +36,11 @@ export function getServerEnv() {
   }
 
   cachedEnv = {
-    apiPort: Number(process.env.API_PORT | process.env.PORT),
+    apiPort: Number(process.env.PORT || process.env.API_PORT || 4000),
     webOrigin: process.env.WEB_ORIGIN,
+    allowedOrigins: process.env.WEB_ORIGIN.split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     databaseUrl: process.env.DATABASE_URL,
     databaseSsl: process.env.DATABASE_SSL === "true",
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET,

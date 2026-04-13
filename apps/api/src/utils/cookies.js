@@ -10,8 +10,7 @@ export function getRefreshCookieOptions() {
     secure: process.env.NODE_ENV === "production",
     sameSite: AUTH_COOKIE_SAME_SITE,
     path: REFRESH_COOKIE_PATH,
-    maxAge: env.jwtRefreshTtlDays * 24 * 60 * 60 * 1000,
-    secure:true
+    maxAge: env.jwtRefreshTtlDays * 24 * 60 * 60 * 1000
   };
 }
 
