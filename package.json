@@ -1,0 +1,22 @@
+{
+  "name": "blocknote-editor",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @blocknote/web",
+    "dev:api": "npm run dev --workspace @blocknote/api",
+    "dev": "npm run dev:web",
+    "build:web": "npm run build --workspace @blocknote/web",
+    "build:api": "npm run build --workspace @blocknote/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  }
+}

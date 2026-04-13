@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@blocknote/shared": [
+        "../../packages/shared/src/index.js"
+      ]
+    }
+  }
+}
