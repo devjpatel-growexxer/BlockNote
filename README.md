@@ -18,6 +18,13 @@ Step 2 complete:
 - API database health check added
 - Local PostgreSQL setup instructions documented
 
+Step 3 complete:
+- Auth APIs added for register, login, refresh, logout, and current-user
+- Password validation and hashing added
+- JWT access token and refresh cookie flow added
+- Protected route middleware added
+- Minimal frontend auth UI added for local verification
+
 ## Planned Stack
 
 - Frontend: Next.js + React
@@ -71,3 +78,4 @@ Current rollback strategy:
 - No block editor libraries will be used.
 - The editor will be built with `contentEditable` and custom interaction logic.
 - AI usage must be logged in `AI_LOG.md`.
+- Authentication uses an access token in memory plus an httpOnly refresh token cookie.

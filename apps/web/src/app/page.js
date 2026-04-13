@@ -1,4 +1,5 @@
 import { APP_NAME, BLOCK_TYPES } from "@blocknote/shared";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function HomePage() {
   return (
@@ -11,14 +12,16 @@ export default function HomePage() {
           PostgreSQL, and a custom contentEditable-based editor.
         </p>
 
+        <AuthShell />
+
         <div className="status-grid">
           <article>
             <h2>Frontend shell</h2>
-            <p>Next.js app router foundation is ready for auth, dashboard, and editor routes.</p>
+            <p>Next.js app router foundation is now wired with a working auth form and session UI.</p>
           </article>
           <article>
             <h2>API shell</h2>
-            <p>Express service layers and repository folders are in place for REST-only APIs.</p>
+            <p>Express auth routes now support register, login, refresh, logout, and current-user checks.</p>
           </article>
           <article>
             <h2>Shared contracts</h2>
