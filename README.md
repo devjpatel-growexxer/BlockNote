@@ -25,6 +25,12 @@ Step 3 complete:
 - Protected route middleware added
 - Minimal frontend auth UI added for local verification
 
+Step 4 complete:
+- Document APIs added for list, create, get, rename, and delete
+- Document ownership checks added at the service layer
+- Starter paragraph block is created with each new document
+- Minimal frontend document dashboard added for local verification
+
 ## Planned Stack
 
 - Frontend: Next.js + React
@@ -79,3 +85,4 @@ Current rollback strategy:
 - The editor will be built with `contentEditable` and custom interaction logic.
 - AI usage must be logged in `AI_LOG.md`.
 - Authentication uses an access token in memory plus an httpOnly refresh token cookie.
+- Document access is protected by ownership checks and returns `403` for cross-account access.

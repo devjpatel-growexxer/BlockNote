@@ -37,7 +37,7 @@ export function getServerEnv() {
   }
 
   cachedEnv = {
-    apiPort: Number(process.env.API_PORT),
+    apiPort: Number(process.env.API_PORT | process.env.PORT),
     webOrigin: process.env.WEB_ORIGIN,
     databaseUrl: process.env.DATABASE_URL,
     databaseSsl: process.env.DATABASE_SSL === "true",

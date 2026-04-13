@@ -41,3 +41,17 @@ Two monorepo path bugs showed up earlier in env and migration loading; those wer
 
 **What I fixed:**
 Updated root path handling for env and migration resolution in the monorepo.
+
+## 2026-04-13
+**Tool:** Codex
+**What I asked for:**
+Implement Step 4 document APIs with ownership checks and a minimal dashboard for create, list, rename, and delete flows.
+
+**What it generated:**
+Document repository, service, controller, validation schemas, and a frontend dashboard connected to the authenticated session.
+
+**What was wrong or missing:**
+Frontend env handling needed extra monorepo-specific fixes before the UI could call the API reliably.
+
+**What I fixed:**
+Adjusted web env loading so `NEXT_PUBLIC_*` values resolve correctly in the app workspace.

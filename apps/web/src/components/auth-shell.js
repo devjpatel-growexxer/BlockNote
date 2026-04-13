@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MIN_PASSWORD_LENGTH } from "@blocknote/shared";
 import { apiRequest } from "@/lib/api";
+import { DocumentDashboard } from "./document-dashboard";
 
 const initialFormState = {
   email: "",
@@ -187,6 +188,8 @@ export function AuthShell() {
           </button>
         </div>
       </div>
+
+      <DocumentDashboard accessToken={session.accessToken} currentUser={session.user} />
     </section>
   );
 }

@@ -78,6 +78,72 @@ h1 {
   margin: 28px 0 32px;
 }
 
+.document-panel,
+.document-detail-card,
+.document-card {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.document-panel {
+  padding: 22px;
+}
+
+.document-panel-header,
+.document-create-form,
+.document-grid,
+.document-card-top {
+  display: grid;
+  gap: 16px;
+}
+
+.document-panel-header {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.document-create-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: 16px;
+}
+
+.document-create-form input,
+.document-card input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fffdf9;
+  color: var(--ink);
+  font: inherit;
+}
+
+.document-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  align-items: start;
+}
+
+.document-list {
+  display: grid;
+  gap: 14px;
+}
+
+.document-card,
+.document-detail-card {
+  padding: 18px;
+}
+
+.document-card h3,
+.document-detail-card h3 {
+  margin-bottom: 6px;
+}
+
+.danger-button {
+  color: #9f2d12;
+}
+
 .auth-mode-switch,
 .session-actions {
   display: flex;
@@ -199,5 +265,11 @@ h1 {
 
   .block-preview ul {
     columns: 1;
+  }
+
+  .document-panel-header,
+  .document-create-form,
+  .document-grid {
+    grid-template-columns: 1fr;
   }
 }
