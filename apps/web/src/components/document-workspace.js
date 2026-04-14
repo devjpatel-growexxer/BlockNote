@@ -107,11 +107,13 @@ export function DocumentWorkspace({ documentId }) {
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [dragOverTrash, setDragOverTrash] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
   const [editingImageIds, setEditingImageIds] = useState(() => new Set());
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
   const saveTimeoutRef = useRef(null);
+  const saveAllRef = useRef(null);
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -142,6 +144,18 @@ export function DocumentWorkspace({ documentId }) {
       }
     }
   }, [blocks]);
+
+  // Ctrl+S / Cmd+S — save all blocks
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        saveAllRef.current();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!pendingFocus.current) {
@@ -178,9 +192,10 @@ export function DocumentWorkspace({ documentId }) {
       clearTimeout(saveTimeoutRef.current);
     }
     setSaveState("saved");
+    setLastSavedAt(new Date());
     saveTimeoutRef.current = setTimeout(() => {
       setSaveState("idle");
-    }, 1500);
+    }, 2500);
   }
 
   function markSaveError() {
@@ -189,6 +204,29 @@ export function DocumentWorkspace({ documentId }) {
     }
     setSaveState("error");
   }
+
+  async function handleSaveAll() {
+    if (saveState === "saving") return;
+    markSaving();
+    try {
+      await Promise.all(
+        blocks.map((block) =>
+          apiRequest(`/blocks/${block.id}`, {
+            method: "PATCH",
+            token: accessToken,
+            body: { type: block.type, content: block.content }
+          })
+        )
+      );
+      markSaved();
+      setStatusText("All blocks saved.");
+      setError("");
+    } catch (requestError) {
+      setError(requestError.message);
+      markSaveError();
+    }
+  }
+  saveAllRef.current = handleSaveAll;
 
   async function loadWorkspace() {
     setError("");
@@ -719,6 +757,7 @@ export function DocumentWorkspace({ documentId }) {
             onBlur={() => void handleBlur(block.id)}
             onChange={(event) => handleTextChange(block.id, event.target.value)}
             onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
+            placeholder="To-do item…"
             ref={(element) => setInputRef(block.id, element)}
             rows={1}
             value={block.content.text}
@@ -759,16 +798,41 @@ export function DocumentWorkspace({ documentId }) {
                   }
                 }}
                 onChange={(event) => handleImageChange(block.id, event.target.value)}
-                placeholder="Paste image URL"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (isValidImageUrl(block.content.url)) {
+                      void handleBlur(block.id);
+                      setImageEditing(block.id, false);
+                    }
+                    return;
+                  }
+
+                  if (event.key === "Backspace" && !block.content.url) {
+                    event.preventDefault();
+                    void (async () => {
+                      // First try to remove an empty block above
+                      const removedPrevious = await handleDeletePreviousEmptyBlock(index);
+                      if (removedPrevious) return;
+                      // Otherwise delete this image block itself
+                      await handleDeleteEmptyBlock(index);
+                    })();
+                  }
+                }}
+                placeholder="Paste image URL and press Enter…"
                 ref={(element) => setInputRef(block.id, element)}
                 type="url"
                 value={block.content.url}
               />
-              {hasValidUrl ? null : (
-                <p className="session-copy" style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
-                  Add a valid image URL to preview it here.
+              {block.content.url && !hasValidUrl ? (
+                <p className="editor-image-error">
+                  ⚠ Invalid image URL. Please paste a direct link ending in .jpg, .png, .gif, .webp, etc.
                 </p>
-              )}
+              ) : !block.content.url ? (
+                <p className="editor-image-hint-text">
+                  Paste a direct image link and press Enter to preview.
+                </p>
+              ) : null}
             </>
           )}
         </div>
@@ -797,13 +861,30 @@ export function DocumentWorkspace({ documentId }) {
           onBlur={() => void handleBlur(block.id)}
           onChange={(event) => handleTextChange(block.id, event.target.value)}
           onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
-          placeholder={block.type === "paragraph" ? "Type '/' for commands…" : ""}
+          placeholder={{
+            paragraph: "Type '/' for commands…",
+            heading_1: "Heading 1",
+            heading_2: "Heading 2",
+            code: "Write code here…",
+          }[block.type] ?? ""}
           ref={(element) => setInputRef(block.id, element)}
           rows={1}
           value={block.content.text}
         />
         {slashMenu?.blockId === block.id ? (
-          <div className="slash-menu">
+          <div
+            className="slash-menu"
+            ref={(el) => {
+              if (!el) return;
+              const rect = el.getBoundingClientRect();
+              const spaceBelow = window.innerHeight - rect.top;
+              if (spaceBelow < rect.height + 8) {
+                el.classList.add("slash-menu--flip");
+              } else {
+                el.classList.remove("slash-menu--flip");
+              }
+            }}
+          >
             <p className="slash-menu-title">Blocks</p>
             {slashOptions.length === 0 ? (
               <p className="slash-menu-empty">No matches</p>
@@ -856,26 +937,41 @@ export function DocumentWorkspace({ documentId }) {
         </div>
         <div className="editor-toolbar">
           <div
-            className={
-              saveState === "idle" ? "save-indicator save-indicator--idle" : "save-indicator"
-            }
+            className={`save-indicator${saveState === "idle" ? " save-indicator--idle" : saveState === "error" ? " save-indicator--error" : ""}`}
             aria-live="polite"
           >
             {saveState === "saving" ? (
               <span className="save-spinner" />
             ) : saveState === "saved" ? (
               <span className="save-check" />
-            ) : null}
+            ) : saveState === "error" ? (
+              <span className="save-error-icon">⚠</span>
+            ) : (
+              <span className="save-cloud-icon">☁</span>
+            )}
             <span className="save-text">
               {saveState === "saving"
-                ? "Saving"
+                ? "Saving…"
                 : saveState === "saved"
-                  ? "Saved"
+                  ? lastSavedAt
+                    ? `Saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                    : "Saved"
                   : saveState === "error"
                     ? "Save failed"
-                    : ""}
+                    : lastSavedAt
+                      ? `Auto‑saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                      : "Auto‑save on"}
             </span>
           </div>
+          <button
+            className="save-btn"
+            disabled={saveState === "saving"}
+            onClick={() => void handleSaveAll()}
+            title="Save all (Ctrl+S)"
+            type="button"
+          >
+            {saveState === "saving" ? "Saving…" : "💾 Save"}
+          </button>
         </div>
       </div>
 

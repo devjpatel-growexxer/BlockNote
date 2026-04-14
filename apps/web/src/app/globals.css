@@ -1137,6 +1137,7 @@ select:focus {
   gap: 0;
   position: relative;
   padding: 1px 0;
+  margin-bottom: 4px;
   border-radius: 8px;
   border: 1px solid transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast);
@@ -1229,6 +1230,18 @@ select:focus {
 
 .editor-input::placeholder {
   color: var(--text-tertiary);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.editor-heading-one::placeholder {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.editor-heading-two::placeholder {
+  font-style: italic;
+  font-weight: 400;
 }
 
 .editor-paragraph {
@@ -1336,6 +1349,22 @@ select:focus {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+.editor-image-error {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--danger);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.editor-image-hint-text {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
 /* ---------- slash menu ---------- */
 .slash-menu {
   position: absolute;
@@ -1349,6 +1378,13 @@ select:focus {
   box-shadow: var(--shadow-menu);
   padding: 6px;
   margin-top: 4px;
+}
+
+.slash-menu--flip {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
 }
 
 .slash-menu-title {
@@ -1419,9 +1455,8 @@ select:focus {
   color: var(--text-tertiary);
   font-size: 0.8125rem;
   font-weight: 500;
-  min-width: 80px;
-  justify-content: center;
-  transition: opacity var(--transition-fast);
+  min-width: 160px;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 
 .save-text {
@@ -1429,12 +1464,21 @@ select:focus {
 }
 
 .save-indicator--idle {
-  opacity: 0;
+  opacity: 1;
 }
 
-.save-indicator--idle .save-spinner,
-.save-indicator--idle .save-check {
-  opacity: 0;
+.save-indicator--error {
+  color: var(--danger);
+}
+
+.save-cloud-icon {
+  font-size: 0.9rem;
+  opacity: 0.45;
+}
+
+.save-error-icon {
+  font-size: 0.9rem;
+  color: var(--danger);
 }
 
 .save-spinner {
@@ -1444,6 +1488,7 @@ select:focus {
   border: 2px solid var(--accent-muted);
   border-top-color: var(--accent);
   animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
 .save-check {
@@ -1453,6 +1498,39 @@ select:focus {
   border-bottom: 2px solid var(--success);
   transform: rotate(-45deg);
   margin-top: -2px;
+  flex-shrink: 0;
+}
+
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+}
+
+.save-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @keyframes spin {
