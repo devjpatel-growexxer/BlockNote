@@ -1,6 +1,9 @@
-import { AUTH_COOKIE_SAME_SITE } from "@blocknote/shared";
 import { REFRESH_COOKIE_PATH } from "../constants/auth-constants.js";
 import { getServerEnv } from "./env.js";
+
+function getSameSiteValue() {
+  return process.env.NODE_ENV === "production" ? "none" : "lax";
+}
 
 export function getRefreshCookieOptions() {
   const env = getServerEnv();
@@ -8,7 +11,7 @@ export function getRefreshCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: AUTH_COOKIE_SAME_SITE,
+    sameSite: getSameSiteValue(),
     path: REFRESH_COOKIE_PATH,
     maxAge: env.jwtRefreshTtlDays * 24 * 60 * 60 * 1000
   };
@@ -20,7 +23,7 @@ export function clearRefreshCookie(response) {
   response.clearCookie(env.refreshCookieName, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: AUTH_COOKIE_SAME_SITE,
+    sameSite: getSameSiteValue(),
     path: REFRESH_COOKIE_PATH
   });
 }

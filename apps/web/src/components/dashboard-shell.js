@@ -1,37 +1,33 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/state/auth-context";
 
-const initialCreateState = {
-  title: ""
-};
-
-export function DocumentDashboard({ accessToken, currentUser }) {
+export function DashboardShell() {
+  const router = useRouter();
+  const { accessToken, user, status, logout } = useAuth();
   const [documents, setDocuments] = useState([]);
-  const [createForm, setCreateForm] = useState(initialCreateState);
+  const [createTitle, setCreateTitle] = useState("");
   const [renameById, setRenameById] = useState({});
   const [selectedDocument, setSelectedDocument] = useState(null);
-  const [status, setStatus] = useState("Waiting for document actions.");
+  const [uiStatus, setUiStatus] = useState("Loading your workspace...");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!accessToken) {
-      setDocuments([]);
-      setSelectedDocument(null);
+    if (status === "guest") {
+      router.push("/login");
       return;
     }
 
-    loadDocuments();
-  }, [accessToken]);
+    if (status === "authenticated" && accessToken) {
+      loadDocuments();
+    }
+  }, [status, accessToken]);
 
   async function loadDocuments() {
-    if (!accessToken) {
-      return;
-    }
-
-    setLoading(true);
     setError("");
 
     try {
@@ -39,15 +35,16 @@ export function DocumentDashboard({ accessToken, currentUser }) {
         token: accessToken
       });
       setDocuments(result.documents);
-      setStatus("Documents loaded.");
+      setSelectedDocument((current) =>
+        current ? result.documents.find((document) => document.id === current.id) ?? null : null
+      );
+      setUiStatus("Workspace synced.");
     } catch (requestError) {
       setError(requestError.message);
-    } finally {
-      setLoading(false);
     }
   }
 
-  async function handleCreateDocument(event) {
+  async function handleCreate(event) {
     event.preventDefault();
     setError("");
 
@@ -56,19 +53,19 @@ export function DocumentDashboard({ accessToken, currentUser }) {
         method: "POST",
         token: accessToken,
         body: {
-          title: createForm.title || "Untitled document"
+          title: createTitle || "Untitled document"
         }
       });
 
       setDocuments((current) => [result.document, ...current]);
-      setCreateForm(initialCreateState);
-      setStatus("Document created.");
+      setCreateTitle("");
+      setUiStatus("New document ready.");
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  async function handleRenameDocument(documentId) {
+  async function handleRename(documentId) {
     const title = (renameById[documentId] || "").trim();
 
     if (!title) {
@@ -89,13 +86,13 @@ export function DocumentDashboard({ accessToken, currentUser }) {
         current.map((document) => (document.id === documentId ? result.document : document))
       );
       setSelectedDocument((current) => (current?.id === documentId ? result.document : current));
-      setStatus("Document renamed.");
+      setUiStatus("Document renamed.");
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  async function handleDeleteDocument(documentId) {
+  async function handleDelete(documentId) {
     setError("");
 
     try {
@@ -103,72 +100,93 @@ export function DocumentDashboard({ accessToken, currentUser }) {
         method: "DELETE",
         token: accessToken
       });
-
       setDocuments((current) => current.filter((document) => document.id !== documentId));
       setSelectedDocument((current) => (current?.id === documentId ? null : current));
-      setStatus("Document deleted.");
+      setUiStatus("Document deleted.");
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  async function handleLoadDocument(documentId) {
+  async function handleSelect(documentId) {
     setError("");
 
     try {
       const result = await apiRequest(`/documents/${documentId}`, {
         token: accessToken
       });
-
       setSelectedDocument(result.document);
-      setStatus("Loaded document details.");
+      setUiStatus("Document loaded.");
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  if (!currentUser) {
-    return null;
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
+
+  if (status === "loading") {
+    return <section className="dashboard-shell">Loading session...</section>;
   }
 
   return (
-    <section className="document-panel">
-      <div className="document-panel-header">
+    <section className="dashboard-shell">
+      <div className="dashboard-hero">
         <div>
-          <p className="eyebrow">Step 4 documents</p>
-          <h2>Document dashboard</h2>
-          <p className="session-copy">Signed in as {currentUser.email}</p>
+          <p className="eyebrow">Workspace</p>
+          <h1>Documents for {user?.email}</h1>
+          <p className="hero-copy auth-copy">
+            Create, inspect, rename, and remove documents. Each new document already receives a
+            starter paragraph block in PostgreSQL.
+          </p>
         </div>
-        <button className="secondary-button" onClick={loadDocuments} type="button">
-          Refresh list
-        </button>
+        <div className="session-actions">
+          <button className="secondary-button" onClick={loadDocuments} type="button">
+            Refresh
+          </button>
+          <button className="primary-button" onClick={handleLogout} type="button">
+            Logout
+          </button>
+        </div>
       </div>
 
-      <form className="document-create-form" onSubmit={handleCreateDocument}>
+      <form className="dashboard-create-bar" onSubmit={handleCreate}>
         <input
-          onChange={(event) => setCreateForm({ title: event.target.value })}
-          placeholder="New document title"
+          onChange={(event) => setCreateTitle(event.target.value)}
+          placeholder="Give the next document a title"
           type="text"
-          value={createForm.title}
+          value={createTitle}
         />
         <button className="primary-button" type="submit">
           Create document
         </button>
       </form>
 
-      <p className="session-status">{loading ? "Loading..." : status}</p>
+      <p className="session-status">{uiStatus}</p>
       {error ? <p className="error-text">{error}</p> : null}
 
-      <div className="document-grid">
-        <div className="document-list">
+      <div className="dashboard-grid">
+        <div className="dashboard-list">
           {documents.length === 0 ? (
-            <p className="session-copy">No documents yet.</p>
+            <article className="document-card">
+              <h3>No documents yet</h3>
+              <p className="session-copy">Create one to start testing the block workspace.</p>
+            </article>
           ) : (
             documents.map((document) => (
               <article className="document-card" key={document.id}>
                 <div className="document-card-top">
-                  <h3>{document.title}</h3>
-                  <p className="session-copy">Updated {new Date(document.updatedAt).toLocaleString()}</p>
+                  <div>
+                    <h3>{document.title}</h3>
+                    <p className="session-copy">
+                      Updated {new Date(document.updatedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <Link className="inline-link" href={`/documents/${document.id}`}>
+                    Open workspace
+                  </Link>
                 </div>
 
                 <input
@@ -178,7 +196,7 @@ export function DocumentDashboard({ accessToken, currentUser }) {
                       [document.id]: event.target.value
                     }))
                   }
-                  placeholder="Rename document"
+                  placeholder="Rename this document"
                   type="text"
                   value={renameById[document.id] ?? ""}
                 />
@@ -186,21 +204,21 @@ export function DocumentDashboard({ accessToken, currentUser }) {
                 <div className="session-actions">
                   <button
                     className="secondary-button"
-                    onClick={() => handleLoadDocument(document.id)}
+                    onClick={() => handleSelect(document.id)}
                     type="button"
                   >
                     View
                   </button>
                   <button
                     className="secondary-button"
-                    onClick={() => handleRenameDocument(document.id)}
+                    onClick={() => handleRename(document.id)}
                     type="button"
                   >
                     Rename
                   </button>
                   <button
                     className="secondary-button danger-button"
-                    onClick={() => handleDeleteDocument(document.id)}
+                    onClick={() => handleDelete(document.id)}
                     type="button"
                   >
                     Delete
@@ -211,22 +229,24 @@ export function DocumentDashboard({ accessToken, currentUser }) {
           )}
         </div>
 
-        <div className="document-detail-card">
+        <aside className="document-detail-card detail-tall-card">
           <h3>Selected document</h3>
           {selectedDocument ? (
             <>
-              <p className="session-copy">ID: {selectedDocument.id}</p>
               <p className="session-copy">Title: {selectedDocument.title}</p>
-              <p className="session-copy">Owner: {selectedDocument.userId}</p>
+              <p className="session-copy">Document ID: {selectedDocument.id}</p>
+              <p className="session-copy">Version: {selectedDocument.version}</p>
               <p className="session-copy">
                 Updated: {new Date(selectedDocument.updatedAt).toLocaleString()}
               </p>
-              <p className="session-copy">Version: {selectedDocument.version}</p>
+              <Link className="primary-link" href={`/documents/${selectedDocument.id}`}>
+                Open blocks
+              </Link>
             </>
           ) : (
-            <p className="session-copy">Pick a document from the list to inspect it.</p>
+            <p className="session-copy">Use View on any document to inspect its metadata here.</p>
           )}
-        </div>
+        </aside>
       </div>
     </section>
   );

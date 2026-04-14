@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import { API_PREFIX } from "@blocknote/shared";
 import { registerAuthRoutes } from "./controllers/auth-controller.js";
+import { registerBlockRoutes } from "./controllers/block-controller.js";
 import { registerDatabaseRoutes } from "./controllers/database-controller.js";
 import { registerDocumentRoutes } from "./controllers/document-controller.js";
 import { apiErrorHandler } from "./middleware/error-handler.js";
@@ -40,6 +41,7 @@ export function createApp() {
   registerDatabaseRoutes(apiRouter);
   registerAuthRoutes(apiRouter);
   registerDocumentRoutes(apiRouter);
+  registerBlockRoutes(apiRouter);
 
   app.use(API_PREFIX, apiRouter);
 

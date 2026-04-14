@@ -31,6 +31,18 @@ Step 4 complete:
 - Starter paragraph block is created with each new document
 - Minimal frontend document dashboard added for local verification
 
+Step 5 complete:
+- Block APIs added for list, create, update, and delete
+- Block content validation added for all 7 required block types
+- Frontend now has separate home, login, register, dashboard, and document workspace pages
+- Document workspace renders real block previews from PostgreSQL-backed API data
+
+Step 6 complete:
+- Document workspace rebuilt as a continuous editor canvas
+- Light theme and full app UI refreshed across home, auth, dashboard, and document pages
+- Core editor behaviors added for Enter split, Backspace edge cases, focus movement, and code-block Tab insertion
+- Block type switching now happens inline on the document canvas
+
 ## Planned Stack
 
 - Frontend: Next.js + React
@@ -86,3 +98,5 @@ Current rollback strategy:
 - AI usage must be logged in `AI_LOG.md`.
 - Authentication uses an access token in memory plus an httpOnly refresh token cookie.
 - Document access is protected by ownership checks and returns `403` for cross-account access.
+- Block content is validated server-side and invalid block payloads return `422`.
+- The editor currently uses a custom block-input system with textarea/input controls styled as a continuous document surface.

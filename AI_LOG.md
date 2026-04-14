@@ -55,3 +55,31 @@ Frontend env handling needed extra monorepo-specific fixes before the UI could c
 
 **What I fixed:**
 Adjusted web env loading so `NEXT_PUBLIC_*` values resolve correctly in the app workspace.
+
+## 2026-04-14
+**Tool:** Codex
+**What I asked for:**
+Implement Step 5 block-system foundation and replace the temporary verification UI with real home, auth, dashboard, and document pages.
+
+**What it generated:**
+Block validation/contracts, block CRUD API routes, a routed frontend with an auth provider, redesigned pages, and a document workspace that renders stored blocks.
+
+**What was wrong or missing:**
+Deployed CORS and frontend env behavior needed extra monorepo and cross-origin cleanup while this step was underway.
+
+**What I fixed:**
+Improved backend CORS origin handling, Render/Vercel cookie behavior, and frontend routing/session structure.
+
+## 2026-04-14
+**Tool:** Codex
+**What I asked for:**
+Turn the document page into a Notion-like continuous editor canvas, move to a lighter visual design, and add the core block editing behavior.
+
+**What it generated:**
+A light-themed routed UI, a continuous document editor canvas, inline block type switching, and core keyboard behaviors for split, delete, focus, and code-tab handling.
+
+**What was wrong or missing:**
+The earlier document workspace looked too much like isolated cards and did not feel like one flowing document.
+
+**What I fixed:**
+Rebuilt the editor UI around a continuous writing surface and updated the visual system to a softer light palette.
