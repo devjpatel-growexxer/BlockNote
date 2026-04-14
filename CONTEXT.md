@@ -33,7 +33,8 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Continuous editor canvas (custom input system)
 - Core behaviors: Enter split, Backspace delete rules, Tab in code
 - Slash menu: `/` at start of empty block opens type picker
-- Drag reorder: hover handle, reorder persisted by `/documents/:id/blocks/reorder`
+- Gap inserters: hover between blocks or at ends to reveal a '+' button to insert directly
+- Drag reorder: live, smooth visual shifting during drag, reorder persisted by `/documents/:id/blocks/reorder`
 
 ## Editor UX Notes
 - Single document canvas, continuous block flow
@@ -106,7 +107,8 @@ Frontend requires:
 - Backspace at start of non-empty block does nothing
 - Backspace at start of empty block deletes it, focuses previous text block
 - If no previous editable block, creates a new paragraph at top
-- Backspace at start of a block deletes a previous divider/image block instead of getting stuck
+- Gap inserters (`+` button) let users insert blocks precisely between any pair of blocks
+- Drag reordering uses `flushSync` for instant native live-shifting and a ghost layer without `pointer-events: none` to retain HTML drag reliability
 
 ## Next Suggested Steps
 1. Autosave with debounce and race handling

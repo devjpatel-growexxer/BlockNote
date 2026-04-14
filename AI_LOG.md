@@ -121,3 +121,20 @@ Trash zone was not centered (parent transform interference). Block bar needed st
 
 **What I fixed:**
 Trash zone centering switched from `left:50%; transform:translateX(-50%)` to `left:0; right:0; margin:auto; width:fit-content`. Glassmorphism pill upgraded with indigo-tinted gradient, 1.5px indigo border, and colored box shadow. Block hover border changed to neutral grey `rgba(0,0,0,0.15)` with no background tint.
+
+## 2026-04-14
+**Tool:** Antigravity
+**What I asked for:**
+Fix "session expired" error for new users on auth pages, make drag-and-drop alive (visually shift blocks while dragging) and perfectly smooth, and add "+" buttons on hover between blocks to easily insert new blocks.
+
+**What it generated:**
+- Fixed auth context: passed `retryOnUnauthorized: false` to the session restore refresh call so it silently fails for new visitors instead of triggering the global error handler.
+- Fixed drag-and-drop UX: removed CSS properties (`pointer-events: none` and `transform`) that broke native HTML5 drag events, moved `draggable` to the article row instead of just the button (with a target guard), and implemented real-time shifting by applying `reorderBlocksArray` from a drag snapshot *during* `onDragOver`.
+- Replaced recursive mapping with `flushSync` in `onDragOver` alongside `lastDragOverRef` dedup for instant, lag-free live-shifting.
+- Added gap inserters: mapped thinly styled divider zones *between* all blocks (and at ends). Hovering them reveals a centered `+` button that inserts a new paragraph block explicitly at that gap.
+
+**What was wrong or missing:**
+The first attempt at live-shifting used `requestAnimationFrame` which caused a frame of delay/lag.
+
+**What I fixed:**
+Switched `requestAnimationFrame` out for `flushSync(() => setBlocks(preview))` from `react-dom` to force synchronous DOM paints, making the block swapping feel instant and buttery smooth as the cursor moves over rows.

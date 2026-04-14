@@ -91,6 +91,20 @@ export async function updateDocumentTitle({ documentId, title }) {
   return mapDocument(result.rows[0]);
 }
 
+export async function touchDocument(documentId) {
+  const result = await query(
+    `
+      update documents
+      set updated_at = now()
+      where id = $1
+      returning id
+    `,
+    [documentId]
+  );
+
+  return result.rowCount > 0;
+}
+
 export async function deleteDocumentById(documentId) {
   const result = await query(
     `

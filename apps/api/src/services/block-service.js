@@ -13,7 +13,7 @@ import {
   updateBlock,
   updateBlockOrderIndex
 } from "../repositories/block-repository.js";
-import { findDocumentById } from "../repositories/document-repository.js";
+import { findDocumentById, touchDocument } from "../repositories/document-repository.js";
 import { AppError } from "../utils/app-error.js";
 
 function normalizeBlockContent(type, content) {
@@ -83,13 +83,16 @@ export async function createDocumentBlock({ userId, documentId, type, content, o
   const maxOrderIndex = await findMaxOrderIndexByDocumentId(documentId);
   const resolvedOrderIndex = typeof orderIndex === "number" ? orderIndex : (maxOrderIndex ?? 0) + 1;
 
-  return createBlock({
+  const block = await createBlock({
     documentId,
     type,
     content: normalizedContent,
     orderIndex: resolvedOrderIndex,
     parentId: parentId ?? null
   });
+
+  await touchDocument(documentId);
+  return block;
 }
 
 export async function updateDocumentBlock({ userId, blockId, type, content }) {
@@ -97,17 +100,21 @@ export async function updateDocumentBlock({ userId, blockId, type, content }) {
   ensureBlockOwnership(block, userId);
   const normalizedContent = normalizeBlockContent(type, content);
 
-  return updateBlock({
+  const updatedBlock = await updateBlock({
     blockId,
     type,
     content: normalizedContent
   });
+
+  await touchDocument(block.documentId);
+  return updatedBlock;
 }
 
 export async function removeDocumentBlock({ userId, blockId }) {
   const block = await findBlockById(blockId);
   ensureBlockOwnership(block, userId);
   await deleteBlockById(blockId);
+  await touchDocument(block.documentId);
 }
 
 function getNeighborOrderIndex(orderList, neighborId) {
@@ -156,6 +163,7 @@ export async function reorderDocumentBlock({ userId, documentId, blockId, before
   }
 
   await updateBlockOrderIndex(blockId, nextOrderIndex);
+  await touchDocument(documentId);
 
   return listBlocksByDocumentId(documentId);
 }

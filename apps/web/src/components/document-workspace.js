@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
+import { flushSync } from "react-dom";
 import { BLOCK_TYPES, DEFAULT_BLOCK_CONTENT, TEXT_BLOCK_TYPES } from "@blocknote/shared";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/state/auth-context";
@@ -114,8 +115,12 @@ export function DocumentWorkspace({ documentId }) {
   const pendingFocus = useRef(null);
   const saveTimeoutRef = useRef(null);
   const saveAllRef = useRef(null);
-  const blocksRef = useRef(blocks); // always-current mirror of blocks state
-  blocksRef.current = blocks;       // updated on every render, safe in async handlers
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+  const dragSnapshotRef = useRef(null);
+  const dropOkRef = useRef(false);
+  const lastDragOverRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -208,7 +213,6 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   async function handleSaveAll() {
-    if (saveState === "saving") return;
     markSaving();
     try {
       await Promise.all(
@@ -241,6 +245,9 @@ export function DocumentWorkspace({ documentId }) {
 
       setDocument(documentResult.document);
       setBlocks(blocksResult.blocks);
+      if (documentResult.document.updatedAt) {
+        setLastSavedAt(new Date(documentResult.document.updatedAt));
+      }
       setStatusText("Document loaded.");
     } catch (requestError) {
       setError(requestError.message);
@@ -363,6 +370,15 @@ export function DocumentWorkspace({ documentId }) {
     }
   }
 
+  function scheduleAutoSave() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+    autosaveTimerRef.current = setTimeout(() => {
+      if (saveAllRef.current) saveAllRef.current();
+    }, 1000);
+  }
+
   function handleTextChange(blockId, value) {
     updateLocalBlock(blockId, (block) => ({
       ...block,
@@ -371,6 +387,7 @@ export function DocumentWorkspace({ documentId }) {
           ? { ...block.content, text: value }
           : { ...block.content, text: value }
     }));
+    scheduleAutoSave();
   }
 
   function handleImageChange(blockId, value) {
@@ -381,6 +398,7 @@ export function DocumentWorkspace({ documentId }) {
         url: value
       }
     }));
+    scheduleAutoSave();
   }
 
   async function handleTodoToggle(blockId, checked) {
@@ -902,13 +920,12 @@ export function DocumentWorkspace({ documentId }) {
           <div
             className="slash-menu"
             ref={(el) => {
-              if (!el) return;
+              if (!el || el.dataset.positioned) return;
+              el.dataset.positioned = "true";
               const rect = el.getBoundingClientRect();
               const spaceBelow = window.innerHeight - rect.top;
               if (spaceBelow < rect.height + 8) {
                 el.classList.add("slash-menu--flip");
-              } else {
-                el.classList.remove("slash-menu--flip");
               }
             }}
           >
@@ -981,12 +998,12 @@ export function DocumentWorkspace({ documentId }) {
                 ? "Saving…"
                 : saveState === "saved"
                   ? lastSavedAt
-                    ? `Saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                    ? `Saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
                     : "Saved"
                   : saveState === "error"
                     ? "Save failed"
                     : lastSavedAt
-                      ? `Auto‑saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                      ? `Auto‑saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
                       : "Auto‑save on"}
             </span>
           </div>
@@ -1006,7 +1023,7 @@ export function DocumentWorkspace({ documentId }) {
         <h1 className="document-title">{document?.title ?? "Untitled"}</h1>
         <p className="document-subtitle">
           {document
-            ? `Last updated ${new Date(document.updatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${new Date(document.updatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+            ? `Last updated ${(lastSavedAt || new Date(document.updatedAt)).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${(lastSavedAt || new Date(document.updatedAt)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
             : "Loading…"}
         </p>
 
@@ -1040,58 +1057,103 @@ export function DocumentWorkspace({ documentId }) {
         {error ? <p className="error-text" style={{ marginBottom: 16 }}>{error}</p> : null}
 
         <div className="editor-paper">
-          {blocks.map((block, index) => (
-            <article
-              className={[
-                "editor-block-row",
-                draggedId === block.id ? "editor-block-row--dragging" : "",
-              ].filter(Boolean).join(" ")}
-              data-block-id={block.id}
-              key={block.id}
-              onDragOver={(event) => {
-                event.preventDefault();
-                if (draggedId && draggedId !== block.id) {
-                  setDragOverId(block.id);
-                }
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (!draggedId || draggedId === block.id) {
-                  return;
-                }
-                const next = reorderBlocksArray(blocks, draggedId, block.id);
-                setBlocks(next);
-                setDragOverId(null);
-                setDraggedId(null);
-                void persistReorder(draggedId, next);
-              }}
-            >
-              <div className="editor-block-gutter">
-                <button
-                  aria-label="Drag block"
-                  className="editor-drag-handle"
-                  draggable
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setDraggedId(block.id);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedId(null);
-                    setDragOverId(null);
-                    setDragOverTrash(false);
-                  }}
-                  type="button"
-                >
-                  ⋮⋮
-                </button>
-              </div>
-              <div className="editor-block-content">{renderEditableBlock(block, index)}</div>
-            </article>
-          ))}
-
           {blocks.length === 0 ? (
             <p className="editor-empty-hint">Click a block type above to start writing…</p>
-          ) : null}
+          ) : (
+            <>
+              {blocks.map((block, index) => (
+                <div className="editor-item-wrapper" key={block.id} style={{ display: "contents" }}>
+                  {/* Gap inserter BEFORE this block */}
+                  <div className="block-gap-inserter">
+                    <div className="block-gap-line" />
+                    <button
+                      className="block-gap-btn"
+                      onClick={() => void insertNewBlockAfter(index - 1).catch((err) => setError(err.message))}
+                      title="Add block"
+                      type="button"
+                    >+</button>
+                    <div className="block-gap-line" />
+                  </div>
+
+                  <article
+                    className={[
+                      "editor-block-row",
+                      draggedId === block.id ? "editor-block-row--dragging" : "",
+                    ].filter(Boolean).join(" ")}
+                    data-block-id={block.id}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      if (!draggedId || draggedId === block.id) return;
+                      if (lastDragOverRef.current === block.id) return;
+                      lastDragOverRef.current = block.id;
+                      const snap = dragSnapshotRef.current;
+                      if (!snap) return;
+                      const preview = reorderBlocksArray(snap, draggedId, block.id);
+                      flushSync(() => setBlocks(preview));
+                    }}
+                  >
+                    <div className="editor-block-gutter">
+                      <button
+                        aria-label="Drag block"
+                        className="editor-drag-handle"
+                        draggable
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          const articleNode = e.currentTarget.closest("article");
+                          if (articleNode) {
+                            e.dataTransfer.setDragImage(articleNode, 15, 15);
+                          }
+                          dragSnapshotRef.current = [...blocks];
+                          dropOkRef.current = false;
+                          lastDragOverRef.current = null;
+                          // Delay the state update to ensure the browser captures a fully opaque ghost image
+                          requestAnimationFrame(() => {
+                            setDraggedId(block.id);
+                          });
+                        }}
+                        onDragEnd={() => {
+                          // Drag dropped outside of the trash means we KEEP the new reordered state
+                          if (!dragOverTrash && dragSnapshotRef.current) {
+                            const oldIndex = dragSnapshotRef.current.findIndex((b) => b.id === block.id);
+                            const newIndex = blocksRef.current.findIndex((b) => b.id === block.id);
+                            // Only hit API if the position actually changed
+                            if (oldIndex !== newIndex) {
+                              void persistReorder(block.id, blocksRef.current);
+                            }
+                          } else if (dragOverTrash && dragSnapshotRef.current) {
+                            // If dropped in trash, the trash onDrop handler deletes it natively.
+                          }
+
+                          dragSnapshotRef.current = null;
+                          dropOkRef.current = false;
+                          lastDragOverRef.current = null;
+                          setDraggedId(null);
+                          setDragOverId(null);
+                          setDragOverTrash(false);
+                        }}
+                        type="button"
+                      >
+                        ⋮⋮
+                      </button>
+                    </div>
+                    <div className="editor-block-content">{renderEditableBlock(block, index)}</div>
+                  </article>
+                </div>
+              ))}
+
+              {/* Gap inserter AFTER the last block */}
+              <div className="block-gap-inserter">
+                <div className="block-gap-line" />
+                <button
+                  className="block-gap-btn"
+                  onClick={() => void insertNewBlockAfter(blocks.length - 1).catch((err) => setError(err.message))}
+                  title="Add block"
+                  type="button"
+                >+</button>
+                <div className="block-gap-line" />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
