@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
 
     async function restoreSession() {
       try {
-        const result = await apiRequest("/auth/refresh", { method: "POST" });
+        const result = await apiRequest("/auth/refresh", { method: "POST", retryOnUnauthorized: false });
 
         if (!active) {
           return;

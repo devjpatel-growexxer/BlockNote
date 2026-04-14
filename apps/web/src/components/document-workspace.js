@@ -114,6 +114,8 @@ export function DocumentWorkspace({ documentId }) {
   const pendingFocus = useRef(null);
   const saveTimeoutRef = useRef(null);
   const saveAllRef = useRef(null);
+  const blocksRef = useRef(blocks); // always-current mirror of blocks state
+  blocksRef.current = blocks;       // updated on every render, safe in async handlers
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -724,22 +726,47 @@ export function DocumentWorkspace({ documentId }) {
     if (event.key === "Backspace" && selectionStart === 0 && selectionEnd === 0) {
       event.preventDefault();
 
-      if (index === 0) {
-        setStatusText("Backspace at the start of the first block does nothing.");
+      // Non-empty block at caret start → do nothing (no merge)
+      if (text.length > 0) {
         return;
       }
 
-      const removedPrevious = await handleDeletePreviousEmptyBlock(index);
-      if (removedPrevious) {
+      // Read block ID directly from the DOM — immune to stale React closures
+      const article = event.currentTarget.closest("article[data-block-id]");
+      const targetId = article?.dataset.blockId ?? block.id;
+      const liveBlocks = blocksRef.current;
+      const currentIdx = liveBlocks.findIndex((b) => b.id === targetId);
+      if (currentIdx <= 0) {
+        // First block or block not found — nothing to do
         return;
       }
 
-      if (text.length === 0) {
-        await handleDeleteEmptyBlock(index);
-        return;
+      // Delete THIS block and move cursor to end of previous editable block
+      try {
+        markSaving();
+        await apiRequest(`/blocks/${targetId}`, {
+          method: "DELETE",
+          token: accessToken
+        });
+        const remaining = blocksRef.current.filter((b) => b.id !== targetId);
+        setBlocks(remaining);
+        markSaved();
+        const prevEditable = remaining
+          .slice(0, currentIdx)
+          .reverse()
+          .find((b) => isTextBlock(b.type));
+        if (prevEditable) {
+          pendingFocus.current = {
+            blockId: prevEditable.id,
+            offset: getBlockText(prevEditable).length
+          };
+        }
+        setStatusText("Removed empty block.");
+      } catch (requestError) {
+        setError(requestError.message);
+        markSaveError();
+        await loadWorkspace();
       }
-
-      return;
     }
   }
 
@@ -1015,9 +1042,11 @@ export function DocumentWorkspace({ documentId }) {
         <div className="editor-paper">
           {blocks.map((block, index) => (
             <article
-              className={
-                dragOverId === block.id ? "editor-block-row editor-block-row--drag" : "editor-block-row"
-              }
+              className={[
+                "editor-block-row",
+                draggedId === block.id ? "editor-block-row--dragging" : "",
+              ].filter(Boolean).join(" ")}
+              data-block-id={block.id}
               key={block.id}
               onDragOver={(event) => {
                 event.preventDefault();
