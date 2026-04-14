@@ -37,10 +37,12 @@ export function AuthForm({ mode }) {
 
   return (
     <section className="auth-page-card">
-      <p className="eyebrow">{isRegister ? "Create your account" : "Welcome back"}</p>
-      <h1>{isRegister ? "Start writing with blocks." : "Sign in to your workspace."}</h1>
-      <p className="hero-copy auth-copy">
-        REST-backed authentication, refresh-token sessions, and a document dashboard are ready.
+      <span className="eyebrow">{isRegister ? "Create account" : "Welcome back"}</span>
+      <h1>{isRegister ? "Start writing with blocks" : "Sign in to your workspace"}</h1>
+      <p className="auth-copy">
+        {isRegister
+          ? "Create your account to start building documents with a powerful block editor."
+          : "Enter your credentials to access your documents and workspace."}
       </p>
 
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -49,6 +51,7 @@ export function AuthForm({ mode }) {
           <input
             autoComplete="email"
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+            placeholder="you@example.com"
             type="email"
             value={form.email}
           />
@@ -61,6 +64,7 @@ export function AuthForm({ mode }) {
             onChange={(event) =>
               setForm((current) => ({ ...current, password: event.target.value }))
             }
+            placeholder="••••••••"
             type="password"
             value={form.password}
           />
@@ -68,21 +72,21 @@ export function AuthForm({ mode }) {
 
         {isRegister ? (
           <p className="helper-copy">
-            Password must be at least {MIN_PASSWORD_LENGTH} characters and include one number.
+            Min. {MIN_PASSWORD_LENGTH} characters with at least one number.
           </p>
         ) : null}
 
         {error ? <p className="error-text">{error}</p> : null}
 
         <button className="primary-button" disabled={submitting} type="submit">
-          {submitting ? "Working..." : isRegister ? "Create account" : "Login"}
+          {submitting ? "Working..." : isRegister ? "Create account" : "Log in"}
         </button>
       </form>
 
       <p className="auth-footer-copy">
-        {isRegister ? "Already have an account?" : "Need an account?"}{" "}
+        {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}
         <Link href={isRegister ? "/login" : "/register"}>
-          {isRegister ? "Login" : "Register"}
+          {isRegister ? "Log in" : "Sign up"}
         </Link>
       </p>
     </section>

@@ -83,3 +83,41 @@ The earlier document workspace looked too much like isolated cards and did not f
 
 **What I fixed:**
 Rebuilt the editor UI around a continuous writing surface and updated the visual system to a softer light palette.
+
+## 2026-04-14
+**Tool:** Antigravity
+**What I asked for:**
+Redesign the entire frontend with a professional Notion-inspired UI — clean neutral palette, Inter font, sidebar dashboard, distraction-free editor, and modern component styles. Increase font and icon sizes for better readability.
+
+**What it generated:**
+Complete CSS overhaul in `globals.css` using CSS custom properties, Inter via `next/font/google`, sticky site header, landing page hero with feature cards, full-page auth forms, sidebar-based dashboard with hover-reveal rename/delete actions, and a distraction-free centered editor canvas with a topbar, toolbar, and all block types rendered.
+
+**What was wrong or missing:**
+Initial font and icon sizes were too small for a professional feel.
+
+**What I fixed:**
+Applied a full size-increase pass across all components — header height, brand icon, nav items, buttons, inputs, sidebar items, editor paragraph/heading text, code blocks, and slash menu. Removed inline style overrides that were fighting the CSS.
+
+## 2026-04-14
+**Tool:** Antigravity
+**What I asked for:**
+Multiple iterative UX improvements to the dashboard and editor: click-to-open document cards, remove open/preview buttons, add a visual block type selector bar, add a light border around the editable canvas, fix image drag bug, add a drag-to-delete trash zone, make the trash zone fixed/centered, widen the editor canvas, add time to the "last updated" subtitle, make topbar and block bar sticky, merge them into one unified bar, then replace the block bar with a centered glassmorphism floating pill, add hover borders on blocks.
+
+**What it generated:**
+- Dashboard cards converted to `<Link>` elements for click-to-navigate; open/preview buttons removed; only rename and delete remain on hover.
+- Visual block bar (later replaced) with icon buttons for all 7 block types.
+- `editor-paper` div with `border` and `box-shadow` to define the writing area.
+- Image drag bug fixed: `draggable={false}` and `onDragStart` prevention on `<img>` elements.
+- Drag-to-delete trash zone: fixed-positioned at bottom-center of viewport, slides in when dragging starts, turns red on hover, deletes block via API on drop.
+- Editor canvas max-width widened from 760px to 960px.
+- Document subtitle updated to include time alongside date.
+- Topbar made `position: sticky` with frosted glass background.
+- Unified sticky bar combining nav row and block row in one container (later reverted to separate by user preference).
+- Glassmorphism floating pill block bar: centered, `border-radius: 48px`, blue-lavender gradient background, indigo border, inset highlight, sticky just below topbar.
+- Block row hover: thin transparent-to-grey border with `border-radius: 8px`, no background fill.
+
+**What was wrong or missing:**
+Trash zone was not centered (parent transform interference). Block bar needed stronger glassmorphism contrast against white canvas. Initial hover border was too colourful.
+
+**What I fixed:**
+Trash zone centering switched from `left:50%; transform:translateX(-50%)` to `left:0; right:0; margin:auto; width:fit-content`. Glassmorphism pill upgraded with indigo-tinted gradient, 1.5px indigo border, and colored box shadow. Block hover border changed to neutral grey `rgba(0,0,0,0.15)` with no background tint.

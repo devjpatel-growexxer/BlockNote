@@ -16,14 +16,15 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="brand-mark" href="/">
+        <span className="brand-icon">B</span>
         BlockNote
       </Link>
       <nav className="site-nav">
-        <Link className="nav-highlight" href="/dashboard">
-          Dashboard
-        </Link>
         {status === "authenticated" ? (
           <>
+            <Link className="nav-highlight" href="/dashboard">
+              Dashboard
+            </Link>
             <span className="nav-user">{user?.email}</span>
             <button className="secondary-button" onClick={handleLogout} type="button">
               Logout
@@ -31,8 +32,10 @@ export function SiteHeader() {
           </>
         ) : (
           <>
-            <Link href="/login">Login</Link>
-            <Link href="/register">Register</Link>
+            <Link href="/login">Log in</Link>
+            <Link className="nav-highlight" href="/register">
+              Get started
+            </Link>
           </>
         )}
       </nav>

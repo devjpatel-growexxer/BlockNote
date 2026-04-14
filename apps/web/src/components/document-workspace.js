@@ -85,9 +85,15 @@ function createBlockContent(type, text = "") {
   return { text };
 }
 
-function BlockTypeBadge({ type }) {
-  return <span className="block-type-badge">{type}</span>;
-}
+const SLASH_ICONS = {
+  paragraph: "¶",
+  heading_1: "H1",
+  heading_2: "H2",
+  code: "</>",
+  todo: "☑",
+  divider: "—",
+  image: "🖼"
+};
 
 export function DocumentWorkspace({ documentId }) {
   const router = useRouter();
@@ -100,6 +106,7 @@ export function DocumentWorkspace({ documentId }) {
   const [saveState, setSaveState] = useState("idle");
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [dragOverTrash, setDragOverTrash] = useState(false);
   const [slashMenu, setSlashMenu] = useState(null);
   const [editingImageIds, setEditingImageIds] = useState(() => new Set());
   const inputRefs = useRef(new Map());
@@ -732,7 +739,13 @@ export function DocumentWorkspace({ documentId }) {
               onClick={() => setImageEditing(block.id, true)}
               type="button"
             >
-              <img alt="Block visual" className="editor-image-preview" src={block.content.url} />
+              <img
+                alt="Block visual"
+                className="editor-image-preview"
+                src={block.content.url}
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
+              />
               <span className="editor-image-hint">Click image to edit URL</span>
             </button>
           ) : (
@@ -752,7 +765,9 @@ export function DocumentWorkspace({ documentId }) {
                 value={block.content.url}
               />
               {hasValidUrl ? null : (
-                <p className="session-copy">Add a valid image URL to preview it here.</p>
+                <p className="session-copy" style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)' }}>
+                  Add a valid image URL to preview it here.
+                </p>
               )}
             </>
           )}
@@ -782,7 +797,7 @@ export function DocumentWorkspace({ documentId }) {
           onBlur={() => void handleBlur(block.id)}
           onChange={(event) => handleTextChange(block.id, event.target.value)}
           onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
-          placeholder={block.type === "paragraph" ? "Type '/' for commands" : ""}
+          placeholder={block.type === "paragraph" ? "Type '/' for commands…" : ""}
           ref={(element) => setInputRef(block.id, element)}
           rows={1}
           value={block.content.text}
@@ -805,7 +820,10 @@ export function DocumentWorkspace({ documentId }) {
                       onClick={() => void handleTypeChange(block.id, type)}
                       type="button"
                     >
-                      {type}
+                      <span className="slash-menu-item-icon">
+                        {SLASH_ICONS[type] || "•"}
+                      </span>
+                      {type.replace("_", " ")}
                     </button>
                   </li>
                 ))}
@@ -818,32 +836,25 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   if (status === "loading") {
-    return <section className="editor-page-shell">Restoring session...</section>;
+    return (
+      <section className="editor-page-shell">
+        <div className="editor-topbar">
+          <span className="session-status">Restoring session…</span>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="editor-page-shell">
-      <div className="editor-page-header">
-        <div>
-          <Link className="inline-link" href="/dashboard">
-            Back to dashboard
+      <div className="editor-topbar">
+        <div className="editor-topbar-left">
+          <Link className="editor-back-link" href="/dashboard">
+            ← Back
           </Link>
-          <h1 className="document-title">{document?.title ?? "Untitled document"}</h1>
-          <p className="document-subtitle">
-            A continuous document canvas with custom block inputs and real PostgreSQL persistence.
-          </p>
+          <span className="editor-doc-name">{document?.title ?? "Untitled"}</span>
         </div>
         <div className="editor-toolbar">
-          <select onChange={(event) => setNewBlockType(event.target.value)} value={newBlockType}>
-            {BLOCK_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <button className="primary-button" onClick={() => void handleAddBlockAtEnd()} type="button">
-            Add block
-          </button>
           <div
             className={
               saveState === "idle" ? "save-indicator save-indicator--idle" : "save-indicator"
@@ -868,55 +879,133 @@ export function DocumentWorkspace({ documentId }) {
         </div>
       </div>
 
-      <p className="session-status">{statusText}</p>
-      {error ? <p className="error-text">{error}</p> : null}
-
       <div className="editor-canvas">
-        {blocks.map((block, index) => (
-          <article
-            className={
-              dragOverId === block.id ? "editor-block-row editor-block-row--drag" : "editor-block-row"
-            }
-            key={block.id}
-            onDragOver={(event) => {
-              event.preventDefault();
-              if (draggedId && draggedId !== block.id) {
-                setDragOverId(block.id);
+        <h1 className="document-title">{document?.title ?? "Untitled"}</h1>
+        <p className="document-subtitle">
+          {document
+            ? `Last updated ${new Date(document.updatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} at ${new Date(document.updatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+            : "Loading…"}
+        </p>
+
+        {/* Glassmorphism floating block bar */}
+        <div className="block-float-bar">
+          {BLOCK_TYPES.map((type) => (
+            <button
+              className={`block-float-btn${newBlockType === type ? " block-float-btn--active" : ""}`}
+              key={type}
+              onClick={() => {
+                setNewBlockType(type);
+                void (async () => {
+                  try {
+                    const block = await insertNewBlockAfter(blocks.length - 1, type, "");
+                    setStatusText(`${block.type} block added.`);
+                    setError("");
+                  } catch (requestError) {
+                    setError(requestError.message);
+                  }
+                })();
+              }}
+              title={`Add ${type.replace("_", " ")} block`}
+              type="button"
+            >
+              <span className="block-float-icon">{SLASH_ICONS[type] || "•"}</span>
+              <span className="block-float-label">{type.replace("_", " ")}</span>
+            </button>
+          ))}
+        </div>
+
+        {error ? <p className="error-text" style={{ marginBottom: 16 }}>{error}</p> : null}
+
+        <div className="editor-paper">
+          {blocks.map((block, index) => (
+            <article
+              className={
+                dragOverId === block.id ? "editor-block-row editor-block-row--drag" : "editor-block-row"
               }
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (!draggedId || draggedId === block.id) {
-                return;
-              }
-              const next = reorderBlocksArray(blocks, draggedId, block.id);
-              setBlocks(next);
-              setDragOverId(null);
-              setDraggedId(null);
-              void persistReorder(draggedId, next);
-            }}
-          >
-            <div className="editor-block-gutter">
-              <button
-                aria-label="Drag block"
-                className="editor-drag-handle"
-                draggable
-                onDragStart={() => setDraggedId(block.id)}
-                onDragEnd={() => {
-                  setDraggedId(null);
-                  setDragOverId(null);
-                }}
-                type="button"
-              >
-                ⋮⋮
-              </button>
-              <span className="editor-block-bullet" />
-              <BlockTypeBadge type={block.type} />
-            </div>
-            <div className="editor-block-content">{renderEditableBlock(block, index)}</div>
-          </article>
-        ))}
+              key={block.id}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (draggedId && draggedId !== block.id) {
+                  setDragOverId(block.id);
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (!draggedId || draggedId === block.id) {
+                  return;
+                }
+                const next = reorderBlocksArray(blocks, draggedId, block.id);
+                setBlocks(next);
+                setDragOverId(null);
+                setDraggedId(null);
+                void persistReorder(draggedId, next);
+              }}
+            >
+              <div className="editor-block-gutter">
+                <button
+                  aria-label="Drag block"
+                  className="editor-drag-handle"
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDraggedId(block.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedId(null);
+                    setDragOverId(null);
+                    setDragOverTrash(false);
+                  }}
+                  type="button"
+                >
+                  ⋮⋮
+                </button>
+              </div>
+              <div className="editor-block-content">{renderEditableBlock(block, index)}</div>
+            </article>
+          ))}
+
+          {blocks.length === 0 ? (
+            <p className="editor-empty-hint">Click a block type above to start writing…</p>
+          ) : null}
+        </div>
       </div>
+
+      {/* Trash drop zone — fixed at bottom, only visible while dragging */}
+      {draggedId ? (
+        <div
+          className={dragOverTrash ? "editor-trash-zone editor-trash-zone--active" : "editor-trash-zone"}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOverTrash(true);
+          }}
+          onDragLeave={() => setDragOverTrash(false)}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setDragOverTrash(false);
+            if (!draggedId) return;
+            const idToDelete = draggedId;
+            setDraggedId(null);
+            setDragOverId(null);
+            try {
+              await apiRequest(`/blocks/${idToDelete}`, {
+                method: "DELETE",
+                token: accessToken
+              });
+              setBlocks((current) => current.filter((b) => b.id !== idToDelete));
+              markSaved();
+              setStatusText("Block deleted.");
+            } catch (requestError) {
+              setError(requestError.message);
+              await loadWorkspace();
+            }
+          }}
+        >
+          <span className="editor-trash-icon">🗑</span>
+          <span className="editor-trash-label">
+            {dragOverTrash ? "Release to delete" : "Drag here to delete"}
+          </span>
+        </div>
+      ) : null}
     </section>
   );
 }

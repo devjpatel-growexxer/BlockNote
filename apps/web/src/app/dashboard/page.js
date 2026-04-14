@@ -5,9 +5,7 @@ export default function DashboardPage() {
   return (
     <main className="app-shell">
       <SiteHeader />
-      <section className="content-shell">
-        <DashboardShell />
-      </section>
+      <DashboardShell />
     </main>
   );
 }

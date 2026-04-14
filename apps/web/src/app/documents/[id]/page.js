@@ -7,9 +7,7 @@ export default async function DocumentPage({ params }) {
   return (
     <main className="app-shell">
       <SiteHeader />
-      <section className="content-shell">
-        <DocumentWorkspace documentId={id} />
-      </section>
+      <DocumentWorkspace documentId={id} />
     </main>
   );
 }

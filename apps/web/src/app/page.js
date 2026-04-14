@@ -9,32 +9,28 @@ export default function HomePage() {
       <section className="content-shell landing-layout">
         <section className="hero-stage">
           <div className="hero-copy-stack">
-            <p className="eyebrow">Custom block editor platform</p>
-            <h1>{APP_NAME}</h1>
+            <span className="eyebrow">Open-source block editor</span>
+            <h1>Write, think, and organize — all in one place</h1>
             <p className="hero-copy">
-              A from-scratch document editor with a React frontend, REST backend, PostgreSQL
-              persistence, and a fully custom block system. No block editor libraries. No shortcuts.
+              {APP_NAME} is a from-scratch document editor with a React frontend,
+              REST backend, and PostgreSQL persistence. No block editor libraries. No shortcuts.
             </p>
-
             <div className="cta-row">
               <Link className="primary-link" href="/register">
-                Create account
+                Get started free
               </Link>
               <Link className="secondary-link" href="/login">
-                Login
-              </Link>
-              <Link className="secondary-link" href="/dashboard">
-                View dashboard
+                Log in
               </Link>
             </div>
           </div>
 
           <div className="hero-panel">
-            <p className="eyebrow">Included block types</p>
+            <span className="eyebrow" style={{ marginBottom: 12 }}>7 block types</span>
             <div className="block-chip-grid">
               {BLOCK_TYPES.map((type) => (
                 <span className="block-chip" key={type}>
-                  {type}
+                  {type.replace("_", " ")}
                 </span>
               ))}
             </div>
@@ -43,16 +39,19 @@ export default function HomePage() {
 
         <section className="feature-grid">
           <article className="feature-card">
-            <h2>Production-minded auth</h2>
+            <div className="feature-icon">🔐</div>
+            <h2>Production-grade auth</h2>
             <p>JWT access tokens, refresh cookies, ownership checks, and REST-only backend routes.</p>
           </article>
           <article className="feature-card">
+            <div className="feature-icon">📄</div>
             <h2>Document workspace</h2>
             <p>Separate dashboard and document routes with live PostgreSQL-backed CRUD operations.</p>
           </article>
           <article className="feature-card">
-            <h2>Block foundation ready</h2>
-            <p>All seven required block types can now be validated, stored, fetched, and previewed.</p>
+            <div className="feature-icon">🧱</div>
+            <h2>All block types</h2>
+            <p>Seven block types validated, stored, and rendered with a fully custom input system.</p>
           </article>
         </section>
       </section>

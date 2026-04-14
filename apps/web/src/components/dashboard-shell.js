@@ -12,6 +12,7 @@ export function DashboardShell() {
   const [documents, setDocuments] = useState([]);
   const [createTitle, setCreateTitle] = useState("");
   const [renameById, setRenameById] = useState({});
+  const [renamingId, setRenamingId] = useState(null);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [uiStatus, setUiStatus] = useState("Loading your workspace...");
   const [error, setError] = useState("");
@@ -86,6 +87,8 @@ export function DashboardShell() {
         current.map((document) => (document.id === documentId ? result.document : document))
       );
       setSelectedDocument((current) => (current?.id === documentId ? result.document : current));
+      setRenamingId(null);
+      setRenameById((current) => ({ ...current, [documentId]: "" }));
       setUiStatus("Document renamed.");
     } catch (requestError) {
       setError(requestError.message);
@@ -128,125 +131,163 @@ export function DashboardShell() {
   }
 
   if (status === "loading") {
-    return <section className="dashboard-shell">Loading session...</section>;
+    return (
+      <section className="dashboard-shell">
+        <aside className="dashboard-sidebar">
+          <p className="sidebar-section-label">Loading…</p>
+        </aside>
+        <div className="dashboard-main">
+          <p className="session-status">Restoring session…</p>
+        </div>
+      </section>
+    );
   }
 
   return (
     <section className="dashboard-shell">
-      <div className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Workspace</p>
-          <h1>Documents for {user?.email}</h1>
-          <p className="hero-copy auth-copy">
-            Create, inspect, rename, and remove documents. Each new document already receives a
-            starter paragraph block in PostgreSQL.
-          </p>
-        </div>
-        <div className="session-actions">
-          <button className="secondary-button" onClick={loadDocuments} type="button">
-            Refresh
-          </button>
-          <button className="primary-button" onClick={handleLogout} type="button">
-            Logout
-          </button>
-        </div>
-      </div>
-
-      <form className="dashboard-create-bar" onSubmit={handleCreate}>
-        <input
-          onChange={(event) => setCreateTitle(event.target.value)}
-          placeholder="Give the next document a title"
-          type="text"
-          value={createTitle}
-        />
-        <button className="primary-button" type="submit">
-          Create document
+      {/* Sidebar */}
+      <aside className="dashboard-sidebar">
+        <p className="sidebar-section-label">Workspace</p>
+        <button className="sidebar-item" onClick={loadDocuments} type="button">
+          <span className="sidebar-item-icon">🏠</span>
+          <span className="sidebar-item-text">All documents</span>
         </button>
-      </form>
 
-      <p className="session-status">{uiStatus}</p>
-      {error ? <p className="error-text">{error}</p> : null}
+        <p className="sidebar-section-label" style={{ marginTop: 16 }}>Documents</p>
+        {documents.map((document) => (
+          <Link
+            className={`sidebar-item${selectedDocument?.id === document.id ? " active" : ""}`}
+            href={`/documents/${document.id}`}
+            key={document.id}
+          >
+            <span className="sidebar-item-icon">📄</span>
+            <span className="sidebar-item-text">{document.title}</span>
+          </Link>
+        ))}
 
-      <div className="dashboard-grid">
-        <div className="dashboard-list">
-          {documents.length === 0 ? (
-            <article className="document-card">
-              <h3>No documents yet</h3>
-              <p className="session-copy">Create one to start testing the block workspace.</p>
-            </article>
-          ) : (
-            documents.map((document) => (
-              <article className="document-card" key={document.id}>
-                <div className="document-card-top">
-                  <div>
-                    <h3>{document.title}</h3>
-                    <p className="session-copy">
-                      Updated {new Date(document.updatedAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <Link className="inline-link" href={`/documents/${document.id}`}>
-                    Open workspace
-                  </Link>
-                </div>
+        <div className="sidebar-footer">
+          <span className="sidebar-user">{user?.email}</span>
+          <button className="sidebar-item" onClick={handleLogout} type="button">
+            <span className="sidebar-item-icon">↩</span>
+            <span className="sidebar-item-text">Log out</span>
+          </button>
+        </div>
+      </aside>
 
-                <input
-                  onChange={(event) =>
-                    setRenameById((current) => ({
-                      ...current,
-                      [document.id]: event.target.value
-                    }))
-                  }
-                  placeholder="Rename this document"
-                  type="text"
-                  value={renameById[document.id] ?? ""}
-                />
-
-                <div className="session-actions">
-                  <button
-                    className="secondary-button"
-                    onClick={() => handleSelect(document.id)}
-                    type="button"
-                  >
-                    View
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={() => handleRename(document.id)}
-                    type="button"
-                  >
-                    Rename
-                  </button>
-                  <button
-                    className="secondary-button danger-button"
-                    onClick={() => handleDelete(document.id)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
+      {/* Main content */}
+      <div className="dashboard-main">
+        <div className="dashboard-hero">
+          <h1>Documents</h1>
+          <p className="session-copy">Create, organize, and edit your documents.</p>
         </div>
 
-        <aside className="document-detail-card detail-tall-card">
-          <h3>Selected document</h3>
-          {selectedDocument ? (
-            <>
-              <p className="session-copy">Title: {selectedDocument.title}</p>
-              <p className="session-copy">Document ID: {selectedDocument.id}</p>
-              <p className="session-copy">Version: {selectedDocument.version}</p>
-              <p className="session-copy">
-                Updated: {new Date(selectedDocument.updatedAt).toLocaleString()}
-              </p>
-              <Link className="primary-link" href={`/documents/${selectedDocument.id}`}>
-                Open blocks
-              </Link>
-            </>
-          ) : (
-            <p className="session-copy">Use View on any document to inspect its metadata here.</p>
-          )}
-        </aside>
+        <form className="dashboard-create-bar" onSubmit={handleCreate}>
+          <input
+            onChange={(event) => setCreateTitle(event.target.value)}
+            placeholder="New document title…"
+            type="text"
+            value={createTitle}
+          />
+          <button className="primary-button" type="submit">
+            + New page
+          </button>
+        </form>
+
+        {error ? <p className="error-text" style={{ marginBottom: 12 }}>{error}</p> : null}
+
+        <div className="dashboard-grid">
+          <div className="dashboard-list">
+            {documents.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📝</div>
+                <h3>No documents yet</h3>
+                <p>Create your first document to start writing.</p>
+              </div>
+            ) : (
+              documents.map((document) => (
+                <div key={document.id}>
+                  <Link
+                    className="document-card"
+                    href={`/documents/${document.id}`}
+                  >
+                    <div className="document-card-top">
+                      <span className="document-card-icon">📄</span>
+                      <div className="document-card-info">
+                        <h3>{document.title}</h3>
+                        <p className="session-copy">
+                          {new Date(document.updatedAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric"
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="session-actions" onClick={(e) => e.preventDefault()}>
+                      <button
+                        className="document-card-actions-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setRenamingId(renamingId === document.id ? null : document.id);
+                        }}
+                        title="Rename"
+                        type="button"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="document-card-actions-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDelete(document.id);
+                        }}
+                        title="Delete"
+                        type="button"
+                        style={{ color: "var(--danger)" }}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </Link>
+
+                  {renamingId === document.id ? (
+                    <div className="rename-inline">
+                      <input
+                        onChange={(event) =>
+                          setRenameById((current) => ({
+                            ...current,
+                            [document.id]: event.target.value
+                          }))
+                        }
+                        placeholder="New title"
+                        type="text"
+                        value={renameById[document.id] ?? ""}
+                        autoFocus
+                      />
+                      <button
+                        className="primary-button"
+                        onClick={() => handleRename(document.id)}
+                        type="button"
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="secondary-button"
+                        onClick={() => setRenamingId(null)}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );
