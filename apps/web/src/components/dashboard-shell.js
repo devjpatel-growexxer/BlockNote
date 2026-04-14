@@ -147,7 +147,12 @@ export function DashboardShell() {
     <section className="dashboard-shell">
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
-        <p className="sidebar-section-label">Workspace</p>
+        <Link className="sidebar-item sidebar-home-link" href="/">
+          <span className="sidebar-item-icon">🏡</span>
+          <span className="sidebar-item-text">Home</span>
+        </Link>
+
+        <p className="sidebar-section-label" style={{ marginTop: 12 }}>Workspace</p>
         <button className="sidebar-item" onClick={loadDocuments} type="button">
           <span className="sidebar-item-icon">🏠</span>
           <span className="sidebar-item-text">All documents</span>

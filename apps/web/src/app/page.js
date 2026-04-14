@@ -1,8 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import { APP_NAME, BLOCK_TYPES } from "@blocknote/shared";
 import { SiteHeader } from "@/components/site-header";
+import { useAuth } from "@/state/auth-context";
 
 export default function HomePage() {
+  const { status } = useAuth();
+  const isLoggedIn = status === "authenticated";
+
   return (
     <main className="app-shell">
       <SiteHeader />
@@ -16,12 +22,20 @@ export default function HomePage() {
               REST backend, and PostgreSQL persistence. No block editor libraries. No shortcuts.
             </p>
             <div className="cta-row">
-              <Link className="primary-link" href="/register">
-                Get started free
-              </Link>
-              <Link className="secondary-link" href="/login">
-                Log in
-              </Link>
+              {isLoggedIn ? (
+                <Link className="primary-link" href="/dashboard">
+                  Go to Dashboard →
+                </Link>
+              ) : (
+                <>
+                  <Link className="primary-link" href="/register">
+                    Get started free
+                  </Link>
+                  <Link className="secondary-link" href="/login">
+                    Log in
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 

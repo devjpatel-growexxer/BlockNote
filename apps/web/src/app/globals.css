@@ -21,12 +21,12 @@
 
   --border: rgba(55, 53, 47, 0.09);
   --border-strong: rgba(55, 53, 47, 0.16);
-  --border-focus: #2383e2;
+  --border-focus: #7c3aed;
 
-  --accent: #2383e2;
-  --accent-hover: #1b6ec2;
-  --accent-soft: rgba(35, 131, 226, 0.08);
-  --accent-muted: rgba(35, 131, 226, 0.15);
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-soft: rgba(124, 58, 237, 0.08);
+  --accent-muted: rgba(124, 58, 237, 0.18);
 
   --danger: #eb5757;
   --danger-soft: rgba(235, 87, 87, 0.08);
@@ -90,11 +90,16 @@ img {
   max-width: 100%;
 }
 
-h1, h2, h3, h4, p {
+h1,
+h2,
+h3,
+h4,
+p {
   margin: 0;
 }
 
-ul, ol {
+ul,
+ol {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1077,7 +1082,7 @@ select:focus {
   border: 2px dashed rgba(235, 87, 87, 0.45);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px rgba(235, 87, 87, 0.15), 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 32px rgba(235, 87, 87, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
   color: var(--danger);
   cursor: pointer;
   min-width: 280px;
@@ -1089,7 +1094,7 @@ select:focus {
   background: rgba(255, 235, 235, 0.98);
   border-color: var(--danger);
   border-style: solid;
-  box-shadow: 0 12px 40px rgba(235, 87, 87, 0.3), 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 12px 40px rgba(235, 87, 87, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1);
   transform: scale(1.04);
 }
 
@@ -1108,6 +1113,7 @@ select:focus {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1534,8 +1540,13 @@ select:focus {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ================================================================
