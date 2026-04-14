@@ -1,10 +1,11 @@
-import { createBlockSchema, updateBlockSchema } from "@blocknote/shared";
+import { createBlockSchema, reorderBlocksSchema, updateBlockSchema } from "@blocknote/shared";
 import { HTTP_STATUS } from "../constants/auth-constants.js";
 import { requireAuth } from "../middleware/auth-middleware.js";
 import {
   createDocumentBlock,
   listDocumentBlocks,
   removeDocumentBlock,
+  reorderDocumentBlock,
   updateDocumentBlock
 } from "../services/block-service.js";
 import { parseOrThrow } from "../utils/validation.js";
@@ -52,6 +53,23 @@ export function registerBlockRoutes(app) {
       });
 
       response.status(HTTP_STATUS.OK).json({ block });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/documents/:id/blocks/reorder", requireAuth, async (request, response, next) => {
+    try {
+      const input = parseOrThrow(reorderBlocksSchema, request.body);
+      const blocks = await reorderDocumentBlock({
+        userId: request.auth.userId,
+        documentId: request.params.id,
+        blockId: input.blockId,
+        beforeId: input.beforeId ?? null,
+        afterId: input.afterId ?? null
+      });
+
+      response.status(HTTP_STATUS.OK).json({ blocks });
     } catch (error) {
       next(error);
     }

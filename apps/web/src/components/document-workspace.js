@@ -97,11 +97,24 @@ export function DocumentWorkspace({ documentId }) {
   const [statusText, setStatusText] = useState("Loading document...");
   const [error, setError] = useState("");
   const [newBlockType, setNewBlockType] = useState("paragraph");
+  const [saveState, setSaveState] = useState("idle");
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [slashMenu, setSlashMenu] = useState(null);
   const [editingImageIds, setEditingImageIds] = useState(() => new Set());
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
+  const saveTimeoutRef = useRef(null);
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
+  const slashOptions = useMemo(() => {
+    if (!slashMenu) {
+      return [];
+    }
+
+    const query = slashMenu.query.toLowerCase();
+    return BLOCK_TYPES.filter((type) => type.includes(query));
+  }, [slashMenu]);
 
   useEffect(() => {
     if (status === "guest") {
@@ -146,6 +159,30 @@ export function DocumentWorkspace({ documentId }) {
     pendingFocus.current = null;
   }, [blockIds]);
 
+  function markSaving() {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    setSaveState("saving");
+  }
+
+  function markSaved() {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    setSaveState("saved");
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveState("idle");
+    }, 1500);
+  }
+
+  function markSaveError() {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    setSaveState("error");
+  }
+
   async function loadWorkspace() {
     setError("");
 
@@ -178,7 +215,46 @@ export function DocumentWorkspace({ documentId }) {
     );
   }
 
+  function reorderBlocksArray(list, fromId, toId) {
+    const fromIndex = list.findIndex((block) => block.id === fromId);
+    const toIndex = list.findIndex((block) => block.id === toId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return list;
+    }
+
+    const next = [...list];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  }
+
+  async function persistReorder(blockId, orderedBlocks) {
+    const index = orderedBlocks.findIndex((block) => block.id === blockId);
+    const before = index > 0 ? orderedBlocks[index - 1].id : null;
+    const after = index < orderedBlocks.length - 1 ? orderedBlocks[index + 1].id : null;
+
+    try {
+      const result = await apiRequest(`/documents/${documentId}/blocks/reorder`, {
+        method: "POST",
+        token: accessToken,
+        body: {
+          blockId,
+          beforeId: before,
+          afterId: after
+        }
+      });
+
+      setBlocks(result.blocks);
+      setStatusText("Blocks reordered.");
+    } catch (requestError) {
+      setError(requestError.message);
+      await loadWorkspace();
+    }
+  }
+
   async function persistBlock(block) {
+    markSaving();
     await apiRequest(`/blocks/${block.id}`, {
       method: "PATCH",
       token: accessToken,
@@ -187,6 +263,7 @@ export function DocumentWorkspace({ documentId }) {
         content: block.content
       }
     });
+    markSaved();
   }
 
   async function handleBlur(blockId) {
@@ -202,10 +279,14 @@ export function DocumentWorkspace({ documentId }) {
       setError("");
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
     }
   }
 
   async function handleTypeChange(blockId, type) {
+    if (slashMenu?.blockId === blockId) {
+      closeSlashMenu();
+    }
     const nextContent = getDefaultContent(type);
 
     updateLocalBlock(blockId, (block) => ({
@@ -225,10 +306,12 @@ export function DocumentWorkspace({ documentId }) {
       });
 
       updateLocalBlock(blockId, () => result.block);
+      markSaved();
       setStatusText(`Converted block to ${type}.`);
       pendingFocus.current = { blockId, offset: 0 };
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
       await loadWorkspace();
     }
   }
@@ -275,7 +358,20 @@ export function DocumentWorkspace({ documentId }) {
       setStatusText("Todo updated.");
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
     }
+  }
+
+  function openSlashMenu(blockId) {
+    setSlashMenu({
+      blockId,
+      query: "",
+      selectedIndex: 0
+    });
+  }
+
+  function closeSlashMenu() {
+    setSlashMenu(null);
   }
 
   function setImageEditing(blockId, value) {
@@ -311,6 +407,7 @@ export function DocumentWorkspace({ documentId }) {
       return next;
     });
     pendingFocus.current = { blockId: result.block.id, offset: focusOffset };
+    markSaved();
     return result.block;
   }
 
@@ -321,6 +418,7 @@ export function DocumentWorkspace({ documentId }) {
       setError("");
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
     }
   }
 
@@ -344,6 +442,7 @@ export function DocumentWorkspace({ documentId }) {
 
       const remaining = blocks.filter((entry) => entry.id !== block.id);
       setBlocks(remaining);
+      markSaved();
 
       if (previousEditable) {
         pendingFocus.current = {
@@ -369,6 +468,7 @@ export function DocumentWorkspace({ documentId }) {
       setStatusText("Replaced non-editable lead with a paragraph block.");
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
       await loadWorkspace();
     }
   }
@@ -376,7 +476,29 @@ export function DocumentWorkspace({ documentId }) {
   async function handleDeletePreviousEmptyBlock(index) {
     const previous = blocks[index - 1];
 
-    if (!previous || !isTextBlock(previous.type)) {
+    if (!previous) {
+      return false;
+    }
+
+    if (previous.type === "divider" || previous.type === "image") {
+      try {
+        await apiRequest(`/blocks/${previous.id}`, {
+          method: "DELETE",
+          token: accessToken
+        });
+
+        setBlocks((current) => current.filter((entry) => entry.id !== previous.id));
+        pendingFocus.current = { blockId: blocks[index].id, offset: 0 };
+        setStatusText("Removed previous non-text block.");
+        return true;
+      } catch (requestError) {
+        setError(requestError.message);
+        await loadWorkspace();
+        return true;
+      }
+    }
+
+    if (!isTextBlock(previous.type)) {
       return false;
     }
 
@@ -457,6 +579,7 @@ export function DocumentWorkspace({ documentId }) {
       setError("");
     } catch (requestError) {
       setError(requestError.message);
+      markSaveError();
       await loadWorkspace();
     }
   }
@@ -466,6 +589,70 @@ export function DocumentWorkspace({ documentId }) {
     const selectionStart = element.selectionStart ?? 0;
     const selectionEnd = element.selectionEnd ?? 0;
     const text = getBlockText(block);
+    const isEmptyTextBlock = isTextBlock(block.type) && text.length === 0;
+
+    if (slashMenu && slashMenu.blockId === block.id) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSlashMenu();
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSlashMenu((current) => ({
+          ...current,
+          selectedIndex: Math.min(
+            (current?.selectedIndex ?? 0) + 1,
+            slashOptions.length - 1
+          )
+        }));
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSlashMenu((current) => ({
+          ...current,
+          selectedIndex: Math.max((current?.selectedIndex ?? 0) - 1, 0)
+        }));
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const nextType = slashOptions[slashMenu.selectedIndex] ?? "paragraph";
+        await handleTypeChange(block.id, nextType);
+        closeSlashMenu();
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        setSlashMenu((current) => ({
+          ...current,
+          query: current.query.slice(0, -1),
+          selectedIndex: 0
+        }));
+        return;
+      }
+
+      if (event.key.length === 1) {
+        event.preventDefault();
+        setSlashMenu((current) => ({
+          ...current,
+          query: `${current.query}${event.key}`,
+          selectedIndex: 0
+        }));
+        return;
+      }
+    }
+
+    if (event.key === "/" && selectionStart === 0 && selectionEnd === 0 && isEmptyTextBlock) {
+      event.preventDefault();
+      openSlashMenu(block.id);
+      return;
+    }
 
     if (event.key === "Tab" && block.type === "code") {
       event.preventDefault();
@@ -507,7 +694,7 @@ export function DocumentWorkspace({ documentId }) {
         return;
       }
 
-      setStatusText("Backspace at the start of a non-empty block is ignored.");
+      return;
     }
   }
 
@@ -589,16 +776,44 @@ export function DocumentWorkspace({ documentId }) {
     ].join(" ");
 
     return (
-      <textarea
-        className={editorClassName}
-        onBlur={() => void handleBlur(block.id)}
-        onChange={(event) => handleTextChange(block.id, event.target.value)}
-        onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
-        placeholder={block.type === "paragraph" ? "Type '/' for commands later" : ""}
-        ref={(element) => setInputRef(block.id, element)}
-        rows={1}
-        value={block.content.text}
-      />
+      <div className="editor-input-shell">
+        <textarea
+          className={editorClassName}
+          onBlur={() => void handleBlur(block.id)}
+          onChange={(event) => handleTextChange(block.id, event.target.value)}
+          onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
+          placeholder={block.type === "paragraph" ? "Type '/' for commands" : ""}
+          ref={(element) => setInputRef(block.id, element)}
+          rows={1}
+          value={block.content.text}
+        />
+        {slashMenu?.blockId === block.id ? (
+          <div className="slash-menu">
+            <p className="slash-menu-title">Blocks</p>
+            {slashOptions.length === 0 ? (
+              <p className="slash-menu-empty">No matches</p>
+            ) : (
+              <ul>
+                {slashOptions.map((type, optionIndex) => (
+                  <li key={type}>
+                    <button
+                      className={
+                        optionIndex === slashMenu.selectedIndex
+                          ? "slash-menu-item active"
+                          : "slash-menu-item"
+                      }
+                      onClick={() => void handleTypeChange(block.id, type)}
+                      type="button"
+                    >
+                      {type}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </div>
     );
   }
 
@@ -629,6 +844,27 @@ export function DocumentWorkspace({ documentId }) {
           <button className="primary-button" onClick={() => void handleAddBlockAtEnd()} type="button">
             Add block
           </button>
+          <div
+            className={
+              saveState === "idle" ? "save-indicator save-indicator--idle" : "save-indicator"
+            }
+            aria-live="polite"
+          >
+            {saveState === "saving" ? (
+              <span className="save-spinner" />
+            ) : saveState === "saved" ? (
+              <span className="save-check" />
+            ) : null}
+            <span className="save-text">
+              {saveState === "saving"
+                ? "Saving"
+                : saveState === "saved"
+                  ? "Saved"
+                  : saveState === "error"
+                    ? "Save failed"
+                    : ""}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -637,8 +873,43 @@ export function DocumentWorkspace({ documentId }) {
 
       <div className="editor-canvas">
         {blocks.map((block, index) => (
-          <article className="editor-block-row" key={block.id}>
+          <article
+            className={
+              dragOverId === block.id ? "editor-block-row editor-block-row--drag" : "editor-block-row"
+            }
+            key={block.id}
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (draggedId && draggedId !== block.id) {
+                setDragOverId(block.id);
+              }
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (!draggedId || draggedId === block.id) {
+                return;
+              }
+              const next = reorderBlocksArray(blocks, draggedId, block.id);
+              setBlocks(next);
+              setDragOverId(null);
+              setDraggedId(null);
+              void persistReorder(draggedId, next);
+            }}
+          >
             <div className="editor-block-gutter">
+              <button
+                aria-label="Drag block"
+                className="editor-drag-handle"
+                draggable
+                onDragStart={() => setDraggedId(block.id)}
+                onDragEnd={() => {
+                  setDraggedId(null);
+                  setDragOverId(null);
+                }}
+                type="button"
+              >
+                ⋮⋮
+              </button>
               <span className="editor-block-bullet" />
               <BlockTypeBadge type={block.type} />
             </div>

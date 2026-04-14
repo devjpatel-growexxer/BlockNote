@@ -57,3 +57,9 @@ export const updateBlockSchema = z.object({
   type: z.enum(BLOCK_TYPES),
   content: z.unknown()
 });
+
+export const reorderBlocksSchema = z.object({
+  blockId: z.string().uuid(),
+  beforeId: z.string().uuid().nullable().optional(),
+  afterId: z.string().uuid().nullable().optional()
+});

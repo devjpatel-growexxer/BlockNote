@@ -1,4 +1,4 @@
-import { query } from "../utils/db.js";
+import { query, withTransaction } from "../utils/db.js";
 
 function mapBlock(row) {
   if (!row) {
@@ -29,6 +29,24 @@ export async function listBlocksByDocumentId(documentId) {
   );
 
   return result.rows.map(mapBlock);
+}
+
+export async function listBlockOrderByDocumentId(documentId, client = null) {
+  const runner = client ? client.query.bind(client) : query;
+  const result = await runner(
+    `
+      select id, order_index
+      from blocks
+      where document_id = $1
+      order by order_index asc, created_at asc
+    `,
+    [documentId]
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    orderIndex: Number(row.order_index)
+  }));
 }
 
 export async function findBlockById(blockId) {
@@ -93,6 +111,35 @@ export async function updateBlock({ blockId, type, content }) {
   );
 
   return mapBlock(result.rows[0]);
+}
+
+export async function updateBlockOrderIndex(blockId, orderIndex, client = null) {
+  const runner = client ? client.query.bind(client) : query;
+  const result = await runner(
+    `
+      update blocks
+      set order_index = $2
+      where id = $1
+      returning id, document_id, type, content, order_index, parent_id, created_at
+    `,
+    [blockId, orderIndex]
+  );
+
+  return mapBlock(result.rows[0]);
+}
+
+export async function renormalizeBlockOrder(documentId) {
+  return withTransaction(async (client) => {
+    const rows = await listBlockOrderByDocumentId(documentId, client);
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const nextIndex = index + 1;
+      await updateBlockOrderIndex(row.id, nextIndex, client);
+    }
+
+    return listBlocksByDocumentId(documentId);
+  });
 }
 
 export async function deleteBlockById(blockId) {

@@ -360,10 +360,15 @@ h3 {
 
 .editor-block-row {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   padding: 4px 0;
+}
+
+.editor-block-row--drag {
+  background: rgba(15, 118, 110, 0.06);
+  border-radius: 16px;
 }
 
 .editor-block-row + .editor-block-row {
@@ -375,6 +380,7 @@ h3 {
   align-items: center;
   gap: 10px;
   padding-top: 10px;
+  min-width: 120px;
   opacity: 0;
   transition: opacity 120ms ease;
 }
@@ -389,6 +395,16 @@ h3 {
   height: 8px;
   border-radius: 999px;
   background: rgba(42, 35, 29, 0.32);
+}
+
+.editor-drag-handle {
+  border: 1px solid rgba(42, 35, 29, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 4px 6px;
+  cursor: grab;
 }
 
 .block-type-badge {
@@ -407,6 +423,11 @@ h3 {
 
 .editor-block-content {
   min-width: 0;
+  padding-left: 6px;
+}
+
+.editor-input-shell {
+  position: relative;
 }
 
 .editor-input {
@@ -419,6 +440,7 @@ h3 {
   line-height: 1.65;
   outline: none;
   overflow: hidden;
+  margin: 0;
 }
 
 .editor-input::placeholder {
@@ -497,6 +519,56 @@ h3 {
   object-fit: cover;
 }
 
+.slash-menu {
+  position: absolute;
+  z-index: 20;
+  top: 36px;
+  left: 0;
+  width: min(260px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(79, 64, 49, 0.16);
+  background: white;
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+
+.slash-menu-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.slash-menu-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.slash-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.slash-menu-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: rgba(15, 118, 110, 0.08);
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.slash-menu-item.active {
+  background: var(--accent);
+  color: white;
+}
+
 .editor-image-hint {
   font-size: 0.8rem;
   color: var(--muted);
@@ -566,5 +638,60 @@ h3 {
 
   h1 {
     font-size: clamp(2.2rem, 11vw, 3.8rem);
+  }
+}
+.save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 64, 49, 0.08);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+  font-size: 0.85rem;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.save-text {
+  min-width: 48px;
+}
+
+.save-indicator--idle {
+  border-color: transparent;
+  background: transparent;
+  color: transparent;
+}
+
+.save-indicator--idle .save-spinner,
+.save-indicator--idle .save-check {
+  opacity: 0;
+}
+
+.save-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(15, 118, 110, 0.25);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+.save-check {
+  width: 12px;
+  height: 6px;
+  border-left: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(-45deg);
+  margin-top: -2px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

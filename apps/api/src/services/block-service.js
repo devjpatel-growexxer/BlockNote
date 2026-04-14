@@ -7,8 +7,11 @@ import {
   deleteBlockById,
   findBlockById,
   findMaxOrderIndexByDocumentId,
+  listBlockOrderByDocumentId,
   listBlocksByDocumentId,
-  updateBlock
+  renormalizeBlockOrder,
+  updateBlock,
+  updateBlockOrderIndex
 } from "../repositories/block-repository.js";
 import { findDocumentById } from "../repositories/document-repository.js";
 import { AppError } from "../utils/app-error.js";
@@ -105,4 +108,54 @@ export async function removeDocumentBlock({ userId, blockId }) {
   const block = await findBlockById(blockId);
   ensureBlockOwnership(block, userId);
   await deleteBlockById(blockId);
+}
+
+function getNeighborOrderIndex(orderList, neighborId) {
+  if (!neighborId) {
+    return null;
+  }
+
+  const neighbor = orderList.find((entry) => entry.id === neighborId);
+  return neighbor ? neighbor.orderIndex : null;
+}
+
+export async function reorderDocumentBlock({ userId, documentId, blockId, beforeId, afterId }) {
+  const document = await findDocumentById(documentId);
+  ensureDocumentOwnership(document, userId);
+
+  const block = await findBlockById(blockId);
+  if (!block || block.documentId !== documentId) {
+    throw new AppError({
+      message: NOT_FOUND,
+      statusCode: HTTP_STATUS.NOT_FOUND,
+      code: "BLOCK_NOT_FOUND"
+    });
+  }
+
+  const orderList = await listBlockOrderByDocumentId(documentId);
+  const beforeIndex = getNeighborOrderIndex(orderList, beforeId);
+  const afterIndex = getNeighborOrderIndex(orderList, afterId);
+
+  let nextOrderIndex;
+
+  if (beforeIndex !== null && afterIndex !== null) {
+    nextOrderIndex = (beforeIndex + afterIndex) / 2;
+  } else if (beforeIndex !== null) {
+    nextOrderIndex = beforeIndex + 1;
+  } else if (afterIndex !== null) {
+    nextOrderIndex = afterIndex - 1;
+  } else {
+    nextOrderIndex = orderList.length + 1;
+  }
+
+  const gap = beforeIndex !== null && afterIndex !== null ? Math.abs(afterIndex - beforeIndex) : null;
+
+  if (gap !== null && gap < 0.001) {
+    await renormalizeBlockOrder(documentId);
+    return listBlocksByDocumentId(documentId);
+  }
+
+  await updateBlockOrderIndex(blockId, nextOrderIndex);
+
+  return listBlocksByDocumentId(documentId);
 }
