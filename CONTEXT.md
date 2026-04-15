@@ -44,6 +44,7 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Slash menu for block type changes (`/` at start of empty block)
 - Drag reorder with backend persistence via `/documents/:id/blocks/reorder`
 - Save indicator shows Saving/Saved/Failed without toolbar layout shift
+- Header and home CTA render skeletons while auth status is restoring, so guest actions do not flash for logged-in users on refresh
 
 ## Key Files
 ### Frontend

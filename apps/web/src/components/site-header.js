@@ -21,7 +21,14 @@ export function SiteHeader() {
         BlockNote
       </Link>
       <nav className="site-nav">
-        {status === "authenticated" ? (
+        {status === "loading" ? (
+          <div className="site-nav-skeleton" aria-hidden="true">
+            <span className="skeleton-shimmer nav-skeleton nav-skeleton--icon" />
+            <span className="skeleton-shimmer nav-skeleton nav-skeleton--primary" />
+            <span className="skeleton-shimmer nav-skeleton nav-skeleton--text" />
+            <span className="skeleton-shimmer nav-skeleton nav-skeleton--button" />
+          </div>
+        ) : status === "authenticated" ? (
           <>
             <ThemeToggle />
             <Link className="nav-highlight" href="/dashboard">

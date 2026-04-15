@@ -8,6 +8,7 @@ import { useAuth } from "@/state/auth-context";
 export default function HomePage() {
   const { status } = useAuth();
   const isLoggedIn = status === "authenticated";
+  const isLoading = status === "loading";
 
   return (
     <main className="app-shell">
@@ -22,7 +23,12 @@ export default function HomePage() {
               REST backend, and PostgreSQL persistence. No block editor libraries. No shortcuts.
             </p>
             <div className="cta-row">
-              {isLoggedIn ? (
+              {isLoading ? (
+                <div className="home-cta-skeleton" aria-hidden="true">
+                  <span className="skeleton-shimmer cta-skeleton cta-skeleton--primary" />
+                  <span className="skeleton-shimmer cta-skeleton cta-skeleton--secondary" />
+                </div>
+              ) : isLoggedIn ? (
                 <Link className="primary-link" href="/dashboard">
                   Go to Dashboard →
                 </Link>

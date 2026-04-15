@@ -365,6 +365,39 @@ select:focus {
   gap: 8px;
 }
 
+.site-nav-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-skeleton {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+}
+
+.nav-skeleton--icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+}
+
+.nav-skeleton--primary {
+  width: 98px;
+  height: 36px;
+}
+
+.nav-skeleton--text {
+  width: 140px;
+  height: 20px;
+  align-self: center;
+}
+
+.nav-skeleton--button {
+  width: 78px;
+  height: 36px;
+}
+
 .nav-highlight {
   display: inline-flex;
   align-items: center;
@@ -488,6 +521,28 @@ select:focus {
   align-items: center;
   justify-content: center;
   margin-top: 8px;
+}
+
+.home-cta-skeleton {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.cta-skeleton {
+  display: inline-flex;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.cta-skeleton--primary {
+  width: 148px;
+}
+
+.cta-skeleton--secondary {
+  width: 94px;
 }
 
 .hero-panel {
