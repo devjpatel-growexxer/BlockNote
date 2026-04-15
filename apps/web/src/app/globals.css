@@ -814,14 +814,172 @@ select:focus {
   font-size: 1.0625rem;
 }
 
+.dashboard-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(340px, 1.05fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.dashboard-search-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 98%, transparent), var(--bg-secondary));
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-search-bar input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dashboard-search-bar input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.dashboard-search-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.dashboard-search-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--text-tertiary);
+  border-radius: 999px;
+}
+
+.dashboard-search-icon::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 2px;
+  right: -3px;
+  bottom: 0;
+  background: var(--text-tertiary);
+  transform: rotate(45deg);
+  transform-origin: center;
+}
+
 .dashboard-create-bar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 8px 8px 8px 16px;
+  margin-bottom: 0;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 98%, transparent), var(--bg-secondary));
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-create-copy {
+  display: flex;
+  flex: 1;
 }
 
 .dashboard-create-bar input {
-  flex: 1;
+  height: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.9375rem;
+}
+
+.dashboard-create-bar input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.dashboard-create-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.dashboard-create-icon::before,
+.dashboard-create-icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: var(--text-tertiary);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.dashboard-create-icon::before {
+  width: 12px;
+  height: 2px;
+}
+
+.dashboard-create-icon::after {
+  width: 2px;
+  height: 12px;
+}
+
+.dashboard-create-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.dashboard-create-submit:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.dashboard-toolbar-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.dashboard-toolbar-clear:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .session-status {
@@ -2087,8 +2245,29 @@ select:focus {
     padding: 0 4px;
   }
 
-  .dashboard-create-bar {
+  .dashboard-toolbar,
+  .dashboard-create-bar,
+  .dashboard-search-bar {
     flex-direction: column;
+  }
+
+  .dashboard-search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-toolbar {
+    display: flex;
+    gap: 10px;
+  }
+
+  .dashboard-create-bar,
+  .dashboard-search-bar {
+    align-items: stretch;
+  }
+
+  .dashboard-create-submit {
+    width: 100%;
   }
 
   .cta-row {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/state/auth-context";
 
@@ -16,6 +16,17 @@ export function DashboardShell() {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [uiStatus, setUiStatus] = useState("Loading your workspace...");
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredDocuments = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return documents;
+    }
+
+    return documents.filter((document) => document.title.toLowerCase().includes(query));
+  }, [documents, searchQuery]);
 
   useEffect(() => {
     if (status === "guest") {
@@ -185,7 +196,7 @@ export function DashboardShell() {
         </button>
 
         <p className="sidebar-section-label" style={{ marginTop: 16 }}>Documents</p>
-        {documents.map((document) => (
+        {filteredDocuments.map((document) => (
           <Link
             className={`sidebar-item${selectedDocument?.id === document.id ? " active" : ""}`}
             href={`/documents/${document.id}`}
@@ -212,17 +223,41 @@ export function DashboardShell() {
           <p className="session-copy">Create, organize, and edit your documents.</p>
         </div>
 
-        <form className="dashboard-create-bar" onSubmit={handleCreate}>
-          <input
-            onChange={(event) => setCreateTitle(event.target.value)}
-            placeholder="New document title…"
-            type="text"
-            value={createTitle}
-          />
-          <button className="primary-button" type="submit">
-            + New page
-          </button>
-        </form>
+        <div className="dashboard-toolbar">
+          <div className="dashboard-search-bar">
+            <span className="dashboard-search-icon" aria-hidden="true" />
+            <input
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search documents by title"
+              type="text"
+              value={searchQuery}
+            />
+            {searchQuery ? (
+              <button
+                className="dashboard-toolbar-clear"
+                onClick={() => setSearchQuery("")}
+                type="button"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+
+          <form className="dashboard-create-bar" onSubmit={handleCreate}>
+            <span className="dashboard-create-icon" aria-hidden="true" />
+            <div className="dashboard-create-copy">
+              <input
+                onChange={(event) => setCreateTitle(event.target.value)}
+                placeholder="New document title"
+                type="text"
+                value={createTitle}
+              />
+            </div>
+            <button className="dashboard-create-submit" type="submit">
+              New document
+            </button>
+          </form>
+        </div>
 
         {error ? <p className="error-text" style={{ marginBottom: 12 }}>{error}</p> : null}
 
@@ -234,8 +269,14 @@ export function DashboardShell() {
                 <h3>No documents yet</h3>
                 <p>Create your first document to start writing.</p>
               </div>
+            ) : filteredDocuments.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">🔎</div>
+                <h3>No matching documents</h3>
+                <p>Try a different search term or clear the filter to see everything again.</p>
+              </div>
             ) : (
-              documents.map((document) => (
+              filteredDocuments.map((document) => (
                 <div key={document.id}>
                   <Link
                     className="document-card"
