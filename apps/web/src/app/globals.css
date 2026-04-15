@@ -997,14 +997,18 @@ select:focus {
    EDITOR PAGE
    ================================================================ */
 .editor-page-shell {
-  min-height: calc(100vh - var(--header-height));
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .editor-topbar {
   position: sticky;
-  top: var(--header-height);
+  top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -1066,7 +1070,8 @@ select:focus {
   width: 100%;
   max-width: var(--editor-max-width);
   margin: 0 auto;
-  padding: 36px 24px 120px;
+  padding: 36px 24px 220px;
+  min-height: 100%;
 }
 
 /* ---------- block bar ---------- */
@@ -1090,7 +1095,7 @@ select:focus {
   margin-left: auto;
   margin-right: auto;
   position: sticky;
-  top: calc(var(--header-height) + 48px + 16px);
+  top: 64px;
   z-index: 30;
   transition: box-shadow var(--transition-normal), transform var(--transition-normal);
 }
@@ -1214,6 +1219,11 @@ select:focus {
   padding: 32px 24px 48px;
   min-height: 200px;
   box-shadow: var(--shadow-sm);
+}
+
+.editor-end-spacer {
+  height: 120px;
+  flex-shrink: 0;
 }
 
 .editor-empty-hint {

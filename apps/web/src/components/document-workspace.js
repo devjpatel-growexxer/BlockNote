@@ -1250,6 +1250,7 @@ export function DocumentWorkspace({ documentId }) {
             </>
           )}
         </div>
+        <div aria-hidden="true" className="editor-end-spacer" />
       </div>
 
       {/* Trash drop zone — fixed at bottom, only visible while dragging */}
