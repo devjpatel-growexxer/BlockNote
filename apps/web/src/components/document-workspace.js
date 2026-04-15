@@ -125,6 +125,10 @@ export function DocumentWorkspace({ documentId }) {
   const dropOkRef = useRef(false);
   const lastDragOverRef = useRef(null);
   const autosaveTimerRef = useRef(null);
+  const dirtyBlocksRef = useRef(new Map());
+  const isAutosaveRunningRef = useRef(false);
+  const autosaveQueuedRef = useRef(false);
+  const documentVersionRef = useRef(1);
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -155,6 +159,17 @@ export function DocumentWorkspace({ documentId }) {
       }
     }
   }, [blocks]);
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Ctrl+S / Cmd+S — save all blocks
   useEffect(() => {
@@ -198,12 +213,15 @@ export function DocumentWorkspace({ documentId }) {
     setSaveState("saving");
   }
 
-  function markSaved() {
+  function markSaved(bumpVersion = true) {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     setSaveState("saved");
     setLastSavedAt(new Date());
+    if (bumpVersion) {
+      documentVersionRef.current += 1;
+    }
     saveTimeoutRef.current = setTimeout(() => {
       setSaveState("idle");
     }, 2500);
@@ -216,25 +234,171 @@ export function DocumentWorkspace({ documentId }) {
     setSaveState("error");
   }
 
-  async function handleSaveAll() {
-    markSaving();
-    try {
-      await Promise.all(
-        blocks.map((block) =>
-          apiRequest(`/blocks/${block.id}`, {
-            method: "PATCH",
-            token: accessToken,
-            body: { type: block.type, content: block.content }
-          })
-        )
-      );
-      markSaved();
-      setStatusText("All blocks saved.");
-      setError("");
-    } catch (requestError) {
-      setError(requestError.message);
-      markSaveError();
+  function toSavePayload(block) {
+    return {
+      id: block.id,
+      type: block.type,
+      content: cloneContent(block.content)
+    };
+  }
+
+  function markBlockDirty(block) {
+    dirtyBlocksRef.current.set(block.id, toSavePayload(block));
+    if (isAutosaveRunningRef.current) {
+      autosaveQueuedRef.current = true;
     }
+  }
+
+  function markAllBlocksDirty() {
+    for (const block of blocksRef.current) {
+      markBlockDirty(block);
+    }
+  }
+
+  async function fetchWorkspaceSnapshot() {
+    const [documentResult, blocksResult] = await Promise.all([
+      apiRequest(`/documents/${documentId}`, { token: accessToken }),
+      apiRequest(`/documents/${documentId}/blocks`, { token: accessToken })
+    ]);
+
+    return {
+      document: documentResult.document,
+      blocks: blocksResult.blocks
+    };
+  }
+
+  async function recoverFromVersionConflict() {
+    const pendingById = new Map(
+      Array.from(dirtyBlocksRef.current.values()).map((entry) => [entry.id, entry])
+    );
+    const snapshot = await fetchWorkspaceSnapshot();
+    const serverIds = new Set(snapshot.blocks.map((block) => block.id));
+
+    setDocument(snapshot.document);
+    setBlocks(() =>
+      snapshot.blocks.map((block) => {
+        const pending = pendingById.get(block.id);
+        if (!pending) {
+          return block;
+        }
+
+        return {
+          ...block,
+          type: pending.type,
+          content: cloneContent(pending.content)
+        };
+      })
+    );
+    documentVersionRef.current = snapshot.document.version;
+    setLastSavedAt(new Date(snapshot.document.updatedAt));
+    setStatusText("Synced latest version. Reapplying pending edits...");
+
+    for (const blockId of Array.from(dirtyBlocksRef.current.keys())) {
+      if (!serverIds.has(blockId)) {
+        dirtyBlocksRef.current.delete(blockId);
+      }
+    }
+  }
+
+  async function flushAutosaveNow() {
+    if (isAutosaveRunningRef.current) {
+      autosaveQueuedRef.current = true;
+      return;
+    }
+
+    if (dirtyBlocksRef.current.size === 0) {
+      return;
+    }
+
+    isAutosaveRunningRef.current = true;
+    markSaving();
+
+    try {
+      let keepSaving = true;
+
+      while (keepSaving) {
+        const batch = Array.from(dirtyBlocksRef.current.values());
+        if (batch.length === 0) {
+          break;
+        }
+
+        const fingerprint = new Map(
+          batch.map((entry) => [entry.id, JSON.stringify({ type: entry.type, content: entry.content })])
+        );
+
+        try {
+          const result = await apiRequest(`/documents/${documentId}/content`, {
+            method: "PUT",
+            token: accessToken,
+            body: {
+              baseVersion: documentVersionRef.current,
+              blocks: batch
+            }
+          });
+
+          documentVersionRef.current = result.document.version;
+          setDocument(result.document);
+          setLastSavedAt(new Date(result.document.updatedAt));
+
+          if (Array.isArray(result.blocks) && result.blocks.length > 0) {
+            const updatedById = new Map(result.blocks.map((block) => [block.id, block]));
+            setBlocks((current) =>
+              current.map((block) => updatedById.get(block.id) ?? block)
+            );
+          }
+
+          for (const entry of batch) {
+            const currentDirty = dirtyBlocksRef.current.get(entry.id);
+            if (!currentDirty) {
+              continue;
+            }
+
+            const currentHash = JSON.stringify({
+              type: currentDirty.type,
+              content: currentDirty.content
+            });
+
+            if (currentHash === fingerprint.get(entry.id)) {
+              dirtyBlocksRef.current.delete(entry.id);
+            }
+          }
+
+          setError("");
+          markSaved(false);
+          setStatusText("All changes saved.");
+        } catch (requestError) {
+          if (requestError.status === 409) {
+            await recoverFromVersionConflict();
+            continue;
+          }
+
+          if (requestError.status === 422 && requestError.code === "BLOCK_DOCUMENT_MISMATCH") {
+            await recoverFromVersionConflict();
+            continue;
+          }
+
+          setError(requestError.message);
+          markSaveError();
+          keepSaving = false;
+        }
+
+        if (!autosaveQueuedRef.current && dirtyBlocksRef.current.size === 0) {
+          keepSaving = false;
+        }
+
+        autosaveQueuedRef.current = false;
+      }
+    } finally {
+      isAutosaveRunningRef.current = false;
+      if (dirtyBlocksRef.current.size > 0) {
+        scheduleAutoSave();
+      }
+    }
+  }
+
+  async function handleSaveAll() {
+    markAllBlocksDirty();
+    await flushAutosaveNow();
   }
   saveAllRef.current = handleSaveAll;
 
@@ -261,15 +425,14 @@ export function DocumentWorkspace({ documentId }) {
     setError("");
 
     try {
-      const [documentResult, blocksResult] = await Promise.all([
-        apiRequest(`/documents/${documentId}`, { token: accessToken }),
-        apiRequest(`/documents/${documentId}/blocks`, { token: accessToken })
-      ]);
+      const snapshot = await fetchWorkspaceSnapshot();
 
-      setDocument(documentResult.document);
-      setBlocks(blocksResult.blocks);
-      if (documentResult.document.updatedAt) {
-        setLastSavedAt(new Date(documentResult.document.updatedAt));
+      setDocument(snapshot.document);
+      setBlocks(snapshot.blocks);
+      documentVersionRef.current = snapshot.document.version;
+      dirtyBlocksRef.current.clear();
+      if (snapshot.document.updatedAt) {
+        setLastSavedAt(new Date(snapshot.document.updatedAt));
       }
       setIsLoaded(true);
       setStatusText("Document loaded.");
@@ -332,16 +495,8 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   async function persistBlock(block) {
-    markSaving();
-    await apiRequest(`/blocks/${block.id}`, {
-      method: "PATCH",
-      token: accessToken,
-      body: {
-        type: block.type,
-        content: block.content
-      }
-    });
-    markSaved();
+    markBlockDirty(block);
+    await flushAutosaveNow();
   }
 
   async function handleBlur(blockId) {
@@ -399,29 +554,33 @@ export function DocumentWorkspace({ documentId }) {
       clearTimeout(autosaveTimerRef.current);
     }
     autosaveTimerRef.current = setTimeout(() => {
-      if (saveAllRef.current) saveAllRef.current();
+      void flushAutosaveNow();
     }, 1000);
   }
 
-  function handleTextChange(blockId, value) {
-    updateLocalBlock(blockId, (block) => ({
+  function handleTextChange(block, value) {
+    const nextBlock = {
       ...block,
       content:
         block.type === "todo"
           ? { ...block.content, text: value }
           : { ...block.content, text: value }
-    }));
+    };
+    updateLocalBlock(block.id, () => nextBlock);
+    markBlockDirty(nextBlock);
     scheduleAutoSave();
   }
 
-  function handleImageChange(blockId, value) {
-    updateLocalBlock(blockId, (block) => ({
+  function handleImageChange(block, value) {
+    const nextBlock = {
       ...block,
       content: {
         ...block.content,
         url: value
       }
-    }));
+    };
+    updateLocalBlock(block.id, () => nextBlock);
+    markBlockDirty(nextBlock);
     scheduleAutoSave();
   }
 
@@ -824,7 +983,7 @@ export function DocumentWorkspace({ documentId }) {
           <textarea
             className="editor-input editor-paragraph"
             onBlur={() => void handleBlur(block.id)}
-            onChange={(event) => handleTextChange(block.id, event.target.value)}
+            onChange={(event) => handleTextChange(block, event.target.value)}
             onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
             placeholder="To-do item…"
             ref={(element) => setInputRef(block.id, element)}
@@ -866,7 +1025,7 @@ export function DocumentWorkspace({ documentId }) {
                     setImageEditing(block.id, false);
                   }
                 }}
-                onChange={(event) => handleImageChange(block.id, event.target.value)}
+                onChange={(event) => handleImageChange(block, event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -928,7 +1087,7 @@ export function DocumentWorkspace({ documentId }) {
         <textarea
           className={editorClassName}
           onBlur={() => void handleBlur(block.id)}
-          onChange={(event) => handleTextChange(block.id, event.target.value)}
+          onChange={(event) => handleTextChange(block, event.target.value)}
           onKeyDown={(event) => void handleTextKeyDown(event, block, index)}
           placeholder={{
             paragraph: "Type '/' for commands…",

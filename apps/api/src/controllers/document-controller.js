@@ -1,4 +1,4 @@
-import { createDocumentSchema, updateDocumentSchema } from "@blocknote/shared";
+import { createDocumentSchema, saveDocumentContentSchema, updateDocumentSchema } from "@blocknote/shared";
 import { HTTP_STATUS } from "../constants/auth-constants.js";
 import { requireAuth } from "../middleware/auth-middleware.js";
 import {
@@ -6,7 +6,8 @@ import {
   getDocument,
   listDocuments,
   removeDocument,
-  renameDocument
+  renameDocument,
+  saveDocumentContent
 } from "../services/document-service.js";
 import { parseOrThrow } from "../utils/validation.js";
 
@@ -70,6 +71,22 @@ export function registerDocumentRoutes(app) {
       });
 
       response.status(HTTP_STATUS.OK).json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/documents/:id/content", requireAuth, async (request, response, next) => {
+    try {
+      const input = parseOrThrow(saveDocumentContentSchema, request.body);
+      const result = await saveDocumentContent({
+        userId: request.auth.userId,
+        documentId: request.params.id,
+        baseVersion: input.baseVersion,
+        blocks: input.blocks
+      });
+
+      response.status(HTTP_STATUS.OK).json(result);
     } catch (error) {
       next(error);
     }

@@ -45,6 +45,21 @@ export async function findDocumentById(documentId) {
   return mapDocument(result.rows[0]);
 }
 
+export async function findDocumentByIdForUpdate(documentId, client) {
+  const result = await client.query(
+    `
+      select id, user_id, title, share_token_hash, is_public, version, updated_at
+      from documents
+      where id = $1
+      limit 1
+      for update
+    `,
+    [documentId]
+  );
+
+  return mapDocument(result.rows[0]);
+}
+
 export async function createDocumentForUser({ userId, title, initialBlock }) {
   return withTransaction(async (client) => {
     const documentResult = await client.query(
@@ -95,7 +110,8 @@ export async function touchDocument(documentId) {
   const result = await query(
     `
       update documents
-      set updated_at = now()
+      set updated_at = now(),
+          version = version + 1
       where id = $1
       returning id
     `,
@@ -103,6 +119,21 @@ export async function touchDocument(documentId) {
   );
 
   return result.rowCount > 0;
+}
+
+export async function bumpDocumentVersion(documentId, client) {
+  const result = await client.query(
+    `
+      update documents
+      set updated_at = now(),
+          version = version + 1
+      where id = $1
+      returning id, user_id, title, share_token_hash, is_public, version, updated_at
+    `,
+    [documentId]
+  );
+
+  return mapDocument(result.rows[0]);
 }
 
 export async function deleteDocumentById(documentId) {

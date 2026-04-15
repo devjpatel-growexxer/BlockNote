@@ -159,6 +159,7 @@ export async function reorderDocumentBlock({ userId, documentId, blockId, before
 
   if (gap !== null && gap < 0.001) {
     await renormalizeBlockOrder(documentId);
+    await touchDocument(documentId);
     return listBlocksByDocumentId(documentId);
   }
 

@@ -113,6 +113,26 @@ export async function updateBlock({ blockId, type, content }) {
   return mapBlock(result.rows[0]);
 }
 
+export async function updateBlockWithinDocument(
+  { documentId, blockId, type, content },
+  client = null
+) {
+  const runner = client ? client.query.bind(client) : query;
+  const result = await runner(
+    `
+      update blocks
+      set type = $3,
+          content = $4::jsonb
+      where id = $1
+        and document_id = $2
+      returning id, document_id, type, content, order_index, parent_id, created_at
+    `,
+    [blockId, documentId, type, JSON.stringify(content)]
+  );
+
+  return mapBlock(result.rows[0]);
+}
+
 export async function updateBlockOrderIndex(blockId, orderIndex, client = null) {
   const runner = client ? client.query.bind(client) : query;
   const result = await runner(
