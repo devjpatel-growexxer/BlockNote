@@ -1078,7 +1078,7 @@ export function DocumentWorkspace({ documentId }) {
             type="checkbox"
           />
           <textarea
-            className="editor-input editor-paragraph"
+            className={`editor-input editor-paragraph${block.content.checked ? " editor-todo-text--checked" : ""}`}
             onBlur={() => void handleBlur(block.id)}
             onChange={(event) => handleTextChange(block, event.target.value)}
             onKeyDown={(event) => void handleTextKeyDown(event, block, index)}

@@ -1880,6 +1880,11 @@ select:focus {
   cursor: pointer;
 }
 
+.editor-todo-text--checked {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
 /* ---------- divider ---------- */
 .editor-divider {
   border: none;
