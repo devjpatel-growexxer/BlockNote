@@ -114,6 +114,10 @@ export function DocumentWorkspace({ documentId }) {
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedBlockIds, setSelectedBlockIds] = useState(() => new Set());
   const [isLoaded, setIsLoaded] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [shareBusy, setShareBusy] = useState(false);
 
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
@@ -129,6 +133,7 @@ export function DocumentWorkspace({ documentId }) {
   const isAutosaveRunningRef = useRef(false);
   const autosaveQueuedRef = useRef(false);
   const documentVersionRef = useRef(1);
+  const shareShellRef = useRef(null);
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -170,6 +175,39 @@ export function DocumentWorkspace({ documentId }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!shareOpen) {
+        return;
+      }
+
+      const container = shareShellRef.current;
+      if (!container) {
+        return;
+      }
+
+      if (container.contains(event.target)) {
+        return;
+      }
+
+      setShareOpen(false);
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && shareOpen) {
+        setShareOpen(false);
+      }
+    }
+
+    window.document.addEventListener("mousedown", handlePointerDown);
+    window.document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.document.removeEventListener("mousedown", handlePointerDown);
+      window.document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [shareOpen]);
 
   // Ctrl+S / Cmd+S — save all blocks
   useEffect(() => {
@@ -421,6 +459,63 @@ export function DocumentWorkspace({ documentId }) {
     }
   }
 
+  function buildShareLink(sharePath) {
+    if (typeof window === "undefined") {
+      return sharePath;
+    }
+
+    return `${window.location.origin}${sharePath}`;
+  }
+
+  async function handleGenerateShareLink() {
+    setShareBusy(true);
+    setShareMessage("");
+    try {
+      const result = await apiRequest(`/documents/${documentId}/share`, {
+        method: "POST",
+        token: accessToken
+      });
+      setDocument(result.document);
+      setShareLink(buildShareLink(result.sharePath));
+      setShareMessage("Public link generated.");
+    } catch (requestError) {
+      setShareMessage(requestError.message);
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function handleDisableShareLink() {
+    setShareBusy(true);
+    setShareMessage("");
+    try {
+      const result = await apiRequest(`/documents/${documentId}/share`, {
+        method: "DELETE",
+        token: accessToken
+      });
+      setDocument(result.document);
+      setShareLink("");
+      setShareMessage("Sharing disabled. Old links no longer work.");
+    } catch (requestError) {
+      setShareMessage(requestError.message);
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareLink) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setShareMessage("Link copied.");
+    } catch {
+      setShareMessage("Could not copy automatically. Please copy manually.");
+    }
+  }
+
   async function loadWorkspace() {
     setError("");
 
@@ -431,6 +526,8 @@ export function DocumentWorkspace({ documentId }) {
       setBlocks(snapshot.blocks);
       documentVersionRef.current = snapshot.document.version;
       dirtyBlocksRef.current.clear();
+      setShareLink("");
+      setShareMessage("");
       if (snapshot.document.updatedAt) {
         setLastSavedAt(new Date(snapshot.document.updatedAt));
       }
@@ -1172,6 +1269,56 @@ export function DocumentWorkspace({ documentId }) {
           <span className="editor-doc-name">{document?.title ?? "Untitled"}</span>
         </div>
         <div className="editor-toolbar">
+          <div className="share-shell" ref={shareShellRef}>
+            <button
+              className="share-btn"
+              onClick={() => setShareOpen((current) => !current)}
+              type="button"
+            >
+              Share
+            </button>
+            {shareOpen ? (
+              <div className="share-panel">
+                <p className="share-panel-title">Public read-only link</p>
+                <p className="share-panel-copy">
+                  Anyone with this link can view. Editing is blocked at API level.
+                </p>
+                <div className="share-controls">
+                  <button
+                    className="share-action-btn"
+                    disabled={shareBusy}
+                    onClick={() => void handleGenerateShareLink()}
+                    type="button"
+                  >
+                    {shareBusy ? "Working..." : document?.isPublic ? "Rotate link" : "Generate link"}
+                  </button>
+                  <button
+                    className="share-action-btn share-action-btn--danger"
+                    disabled={shareBusy || !document?.isPublic}
+                    onClick={() => void handleDisableShareLink()}
+                    type="button"
+                  >
+                    Disable
+                  </button>
+                </div>
+                {shareLink ? (
+                  <div className="share-link-row">
+                    <input className="share-link-input" readOnly value={shareLink} />
+                    <button className="share-copy-btn" onClick={() => void handleCopyShareLink()} type="button">
+                      Copy
+                    </button>
+                  </div>
+                ) : document?.isPublic ? (
+                  <p className="share-panel-note">
+                    Sharing is enabled, but the previous token is hidden. Generate a new link to copy.
+                  </p>
+                ) : (
+                  <p className="share-panel-note">Sharing is currently off.</p>
+                )}
+                {shareMessage ? <p className="share-panel-message">{shareMessage}</p> : null}
+              </div>
+            ) : null}
+          </div>
           <div
             className={`save-indicator${saveState === "idle" ? " save-indicator--idle" : saveState === "error" ? " save-indicator--error" : ""}`}
             aria-live="polite"

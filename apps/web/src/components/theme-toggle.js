@@ -6,17 +6,12 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Check if the user already has a saved theme
     const savedTheme = localStorage.getItem("theme");
-    // Or if their OS is natively in dark mode
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
-    // Default to dark mode if saved, OR if no preference is saved and system is dark
-    const shouldBeDark = savedTheme === "dark" || (!savedTheme && systemPrefersDark);
-    
+    // Default to light theme unless the user explicitly selected dark before.
+    const shouldBeDark = savedTheme === "dark";
+
     setIsDark(shouldBeDark);
 
-    // Apply the class globally
     if (shouldBeDark) {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {

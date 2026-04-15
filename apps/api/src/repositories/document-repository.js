@@ -148,3 +148,35 @@ export async function deleteDocumentById(documentId) {
 
   return result.rowCount > 0;
 }
+
+export async function updateDocumentSharing({ documentId, shareTokenHash, isPublic }) {
+  const result = await query(
+    `
+      update documents
+      set share_token_hash = $2,
+          is_public = $3,
+          updated_at = now(),
+          version = version + 1
+      where id = $1
+      returning id, user_id, title, share_token_hash, is_public, version, updated_at
+    `,
+    [documentId, shareTokenHash, isPublic]
+  );
+
+  return mapDocument(result.rows[0]);
+}
+
+export async function findPublicDocumentByShareTokenHash(shareTokenHash) {
+  const result = await query(
+    `
+      select id, user_id, title, share_token_hash, is_public, version, updated_at
+      from documents
+      where share_token_hash = $1
+        and is_public = true
+      limit 1
+    `,
+    [shareTokenHash]
+  );
+
+  return mapDocument(result.rows[0]);
+}

@@ -8,6 +8,7 @@ import { registerDatabaseRoutes } from "./controllers/database-controller.js";
 import { registerDocumentRoutes } from "./controllers/document-controller.js";
 import { apiErrorHandler } from "./middleware/error-handler.js";
 import { registerHealthRoutes } from "./controllers/health-controller.js";
+import { registerShareRoutes } from "./controllers/share-controller.js";
 import { getServerEnv } from "./utils/env.js";
 
 export function createApp() {
@@ -41,6 +42,7 @@ export function createApp() {
   registerDatabaseRoutes(apiRouter);
   registerAuthRoutes(apiRouter);
   registerDocumentRoutes(apiRouter);
+  registerShareRoutes(apiRouter);
   registerBlockRoutes(apiRouter);
 
   app.use(API_PREFIX, apiRouter);

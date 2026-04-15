@@ -74,6 +74,10 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Auth: `/api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/me`
 - Documents: `/api/v1/documents`, `/documents/:id`
 - Versioned save: `PUT /api/v1/documents/:id/content` with `{ baseVersion, blocks[] }`
+- Sharing:
+  - `POST /api/v1/documents/:id/share`
+  - `DELETE /api/v1/documents/:id/share`
+  - `GET /api/v1/share/:token` (public, read-only)
 - Blocks:
   - `GET /api/v1/documents/:id/blocks`
   - `POST /api/v1/documents/:id/blocks`
@@ -112,6 +116,9 @@ Frontend requires:
 - Gap inserters (`+` button) let users insert blocks precisely between any pair of blocks
 - Drag reordering uses `flushSync` for instant native live-shifting and a ghost layer without `pointer-events: none` to retain HTML drag reliability
 - Autosave is race-safe: frontend sends debounced dirty blocks with `baseVersion`; backend enforces version match and returns `409` on stale writes
+- Share links store only hashed tokens in DB; owner gets raw token only when generating/rotating link
+- Shared document route renders read-only view and write APIs still require authenticated owner JWT
+- Shared document payload includes owner metadata (`id`, `email`, `createdAt`) for attribution in public view
 
 ## Next Suggested Steps
 1. Autosave with debounce and race handling
