@@ -116,7 +116,19 @@ export function SharedDocumentView({ token }) {
       <main className="app-shell">
         <SiteHeader />
         <section className="share-page-shell">
-          <p className="share-error">{error || "This shared document is not available."}</p>
+          <div className="share-state-card share-state-card--error">
+            <div className="share-state-brand">
+              <span className="brand-icon">B</span>
+              <span className="share-state-brand-text">BlockNote</span>
+            </div>
+            <div className="share-state-icon" aria-hidden="true">
+              !
+            </div>
+            <h2>This shared document is no longer available</h2>
+            <p className="share-error">
+              {error || "The owner may have disabled sharing, rotated the link, or removed this document."}
+            </p>
+          </div>
         </section>
       </main>
     );
