@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/state/auth-context";
+import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export function SiteHeader() {
       <nav className="site-nav">
         {status === "authenticated" ? (
           <>
+            <ThemeToggle />
             <Link className="nav-highlight" href="/dashboard">
               Dashboard
             </Link>
@@ -32,6 +34,7 @@ export function SiteHeader() {
           </>
         ) : (
           <>
+            <ThemeToggle />
             <Link href="/login">Log in</Link>
             <Link className="nav-highlight" href="/register">
               Get started

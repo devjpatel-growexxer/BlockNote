@@ -132,19 +132,45 @@ export function DashboardShell() {
 
   if (status === "loading") {
     return (
-      <section className="dashboard-shell">
+      <section className="dashboard-shell page-transition">
         <aside className="dashboard-sidebar">
-          <p className="sidebar-section-label">Loading…</p>
+          <div className="skeleton-shimmer" style={{ width: 60, height: 24, marginBottom: 32 }} />
+          <div className="skeleton-shimmer" style={{ width: 80, height: 16, marginBottom: 16 }} />
+          {[1, 2, 3].map(i => (
+             <div key={i} className="skeleton-shimmer" style={{ width: "100%", height: 32, marginBottom: 8, borderRadius: 6 }} />
+          ))}
         </aside>
         <div className="dashboard-main">
-          <p className="session-status">Restoring session…</p>
+          <div className="dashboard-hero">
+            <h1>Documents</h1>
+            <p className="session-copy">Create, organize, and edit your documents.</p>
+          </div>
+          <div className="dashboard-create-bar" style={{ display: 'flex', gap: 12 }}>
+            <div className="skeleton-shimmer" style={{ flex: 1, height: 44, borderRadius: 22 }} />
+            <div className="skeleton-shimmer" style={{ width: 120, height: 44, borderRadius: 22 }} />
+          </div>
+          <div className="dashboard-grid" style={{ marginTop: 24 }}>
+            <div className="dashboard-list">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="document-card" style={{ border: 'none', background: 'transparent' }}>
+                  <div className="document-card-top">
+                    <div className="skeleton-shimmer" style={{ width: 24, height: 24, borderRadius: 4 }} />
+                    <div className="document-card-info" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                      <div className="skeleton-shimmer" style={{ width: "30%", height: 20 }} />
+                      <div className="skeleton-shimmer" style={{ width: "15%", height: 14 }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="dashboard-shell">
+    <section className="dashboard-shell page-transition">
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
         <Link className="sidebar-item sidebar-home-link" href="/">

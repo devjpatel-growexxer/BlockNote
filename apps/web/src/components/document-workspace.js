@@ -111,6 +111,10 @@ export function DocumentWorkspace({ documentId }) {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
   const [editingImageIds, setEditingImageIds] = useState(() => new Set());
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedBlockIds, setSelectedBlockIds] = useState(() => new Set());
+  const [isLoaded, setIsLoaded] = useState(false);
+
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
   const saveTimeoutRef = useRef(null);
@@ -234,6 +238,25 @@ export function DocumentWorkspace({ documentId }) {
   }
   saveAllRef.current = handleSaveAll;
 
+  async function handleBulkDelete() {
+    if (selectedBlockIds.size === 0) return;
+    setStatusText("Deleting selected blocks...");
+    
+    try {
+      const deletePromises = Array.from(selectedBlockIds).map(id =>
+        apiRequest(`/blocks/${id}`, { method: "DELETE", token: accessToken })
+      );
+      await Promise.all(deletePromises);
+      
+      setBlocks(current => current.filter(b => !selectedBlockIds.has(b.id)));
+      setIsBulkMode(false);
+      setSelectedBlockIds(new Set());
+      setStatusText("Bulk deletion complete.");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function loadWorkspace() {
     setError("");
 
@@ -248,6 +271,7 @@ export function DocumentWorkspace({ documentId }) {
       if (documentResult.document.updatedAt) {
         setLastSavedAt(new Date(documentResult.document.updatedAt));
       }
+      setIsLoaded(true);
       setStatusText("Document loaded.");
     } catch (requestError) {
       setError(requestError.message);
@@ -960,11 +984,20 @@ export function DocumentWorkspace({ documentId }) {
     );
   }
 
-  if (status === "loading") {
+  if (status === "loading" || (status === "authenticated" && !isLoaded)) {
     return (
-      <section className="editor-page-shell">
-        <div className="editor-topbar">
-          <span className="session-status">Restoring session…</span>
+      <section className="editor-page-shell page-transition">
+        <div className="editor-topbar" style={{ gap: 16 }}>
+          <div className="skeleton-shimmer" style={{ width: 80, height: 20 }} />
+          <div className="skeleton-shimmer" style={{ width: 140, height: 24, marginLeft: 16 }} />
+        </div>
+        <div className="editor-paper">
+          {[73, 58, 60, 48, 79, 75].map((width, i) => (
+            <div key={i} className="editor-block-row" style={{ padding: '8px 0', border: 'none' }}>
+               <div className="editor-block-gutter" style={{ width: 44 }} />
+               <div className="skeleton-shimmer" style={{ width: `${width}%`, height: 20, borderRadius: 4 }} />
+            </div>
+          ))}
         </div>
       </section>
     );
@@ -1048,17 +1081,56 @@ export function DocumentWorkspace({ documentId }) {
               title={`Add ${type.replace("_", " ")} block`}
               type="button"
             >
-              <span className="block-float-icon">{SLASH_ICONS[type] || "•"}</span>
-              <span className="block-float-label">{type.replace("_", " ")}</span>
-            </button>
-          ))}
-        </div>
+                <span className="block-float-icon">{SLASH_ICONS[type] || "•"}</span>
+                <span className="block-float-label">{type.replace("_", " ")}</span>
+              </button>
+            ))}
+          </div>
+
+        {/* Floating Bulk Action Bar */}
+        {isBulkMode && (
+          <div className="bulk-action-bar">
+            <span>{selectedBlockIds.size} selected</span>
+            <div className="bulk-action-buttons">
+              <button
+                className="bulk-btn bulk-btn--select"
+                onClick={() => {
+                  if (selectedBlockIds.size === blocks.length) {
+                    setSelectedBlockIds(new Set());
+                  } else {
+                    setSelectedBlockIds(new Set(blocks.map(b => b.id)));
+                  }
+                }}
+              >
+                {selectedBlockIds.size === blocks.length ? "Deselect All" : "Select All"}
+              </button>
+              <button className="bulk-btn bulk-btn--delete" onClick={() => void handleBulkDelete()}>
+                Delete
+              </button>
+              <button className="bulk-btn" onClick={() => {
+                setIsBulkMode(false);
+                setSelectedBlockIds(new Set());
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {error ? <p className="error-text" style={{ marginBottom: 16 }}>{error}</p> : null}
 
         <div className="editor-paper">
           {blocks.length === 0 ? (
-            <p className="editor-empty-hint">Click a block type above to start writing…</p>
+            <div className="empty-state-illustration" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 24px', opacity: 0.6 }}>
+               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16, color: 'var(--text-tertiary)' }}>
+                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                 <polyline points="14 2 14 8 20 8"/>
+                 <line x1="12" y1="18" x2="12" y2="12"/>
+                 <line x1="9" y1="15" x2="15" y2="15"/>
+               </svg>
+               <h3 style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8, marginTop: 0 }}>It's quiet in here…</h3>
+               <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9375rem', margin: 0 }}>Type your first word, or use the menu above to insert a block.</p>
+            </div>
           ) : (
             <>
               {blocks.map((block, index) => (
@@ -1078,6 +1150,7 @@ export function DocumentWorkspace({ documentId }) {
                   <article
                     className={[
                       "editor-block-row",
+                      isBulkMode && selectedBlockIds.has(block.id) ? "editor-block-row--selected" : "",
                       draggedId === block.id ? "editor-block-row--dragging" : "",
                     ].filter(Boolean).join(" ")}
                     data-block-id={block.id}
@@ -1093,10 +1166,31 @@ export function DocumentWorkspace({ documentId }) {
                     }}
                   >
                     <div className="editor-block-gutter">
-                      <button
-                        aria-label="Drag block"
-                        className="editor-drag-handle"
-                        draggable
+                      <input
+                        type="checkbox"
+                        className={`editor-bulk-checkbox ${!isBulkMode ? "editor-bulk-checkbox--hover-only" : ""}`}
+                        checked={selectedBlockIds.has(block.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          if (checked && !isBulkMode) {
+                            setIsBulkMode(true);
+                          }
+                          setSelectedBlockIds(prev => {
+                            const next = new Set(prev);
+                            if (checked) next.add(block.id);
+                            else next.delete(block.id);
+                            if (!checked && next.size === 0) {
+                              setIsBulkMode(false);
+                            }
+                            return next;
+                          });
+                        }}
+                      />
+                      {!isBulkMode && (
+                        <button
+                          aria-label="Drag block"
+                          className="editor-drag-handle"
+                          draggable
                         onDragStart={(e) => {
                           e.stopPropagation();
                           const articleNode = e.currentTarget.closest("article");
@@ -1135,6 +1229,7 @@ export function DocumentWorkspace({ documentId }) {
                       >
                         ⋮⋮
                       </button>
+                      )}
                     </div>
                     <div className="editor-block-content">{renderEditableBlock(block, index)}</div>
                   </article>
