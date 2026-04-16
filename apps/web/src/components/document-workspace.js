@@ -550,13 +550,6 @@ export function DocumentWorkspace({ documentId }) {
           setDocument(result.document);
           setLastSavedAt(new Date(result.document.updatedAt));
 
-          if (Array.isArray(result.blocks) && result.blocks.length > 0) {
-            const updatedById = new Map(result.blocks.map((block) => [block.id, block]));
-            setBlocks((current) =>
-              current.map((block) => updatedById.get(block.id) ?? block)
-            );
-          }
-
           for (const entry of batch) {
             const currentDirty = dirtyBlocksRef.current.get(entry.id);
             if (!currentDirty) {
@@ -571,6 +564,20 @@ export function DocumentWorkspace({ documentId }) {
             if (currentHash === fingerprint.get(entry.id)) {
               dirtyBlocksRef.current.delete(entry.id);
             }
+          }
+
+          if (Array.isArray(result.blocks) && result.blocks.length > 0) {
+            const updatedById = new Map(result.blocks.map((block) => [block.id, block]));
+            setBlocks((current) =>
+              current.map((block) => {
+                const serverBlock = updatedById.get(block.id);
+                // If the block isn't returned, or it was locally modified while waiting for the response, ignore the server echo
+                if (!serverBlock || dirtyBlocksRef.current.has(block.id)) {
+                  return block; 
+                }
+                return serverBlock;
+              })
+            );
           }
 
           setError("");
