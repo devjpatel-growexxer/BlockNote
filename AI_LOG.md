@@ -138,3 +138,48 @@ The first attempt at live-shifting used `requestAnimationFrame` which caused a f
 
 **What I fixed:**
 Switched `requestAnimationFrame` out for `flushSync(() => setBlocks(preview))` from `react-dom` to force synchronous DOM paints, making the block swapping feel instant and buttery smooth as the cursor moves over rows.
+
+## 2026-04-15 to 2026-04-16
+**Tool:** Antigravity
+**What I asked for:**
+Iteratively improve the frontend UX and visual polish: redesign the landing page, improve dashboard search/create controls, refine the document shell into a left-sidebar layout, polish document-level states, and keep the editor feeling more product-like.
+
+**What it generated:**
+- Landing page redesign with more open spacing and scroll-reveal motion.
+- Dashboard search UI and compact toolbar refinements.
+- Left-sidebar document shell with title, share, save, export, and bottom-aligned back button.
+- Better empty/error/read-only states, including shared-document unavailable messaging.
+- Multiple visual iterations around spacing, hover controls, save/share button styling, and responsive layout polish.
+
+**What was wrong or missing:**
+- Some iterations produced UI that was too cramped or too visually heavy.
+- The sidebar shell initially caused document scroll issues and clipped the share popover.
+- Cross-account document URLs initially left the page in a loading skeleton instead of showing a forbidden state.
+
+**What I fixed:**
+- Requested more open spacing and lighter visual density across landing/dashboard/editor.
+- Corrected the document shell so the main canvas scrolls properly and the share panel is not clipped.
+- Replaced loading-only cross-account behavior with a dedicated forbidden state in the document route.
+
+## 2026-04-15 to 2026-04-16
+**Tool:** Codex
+**What I asked for:**
+Stabilize backend and editor behavior: autosave/versioning, auth/session flow explanations, image validation and image interactions, document ownership handling, export behavior, and multiple edge-case fixes across block editing.
+
+**What it generated:**
+- Race-safe autosave using document `baseVersion` and backend conflict handling.
+- JWT auth flow using short-lived access token in frontend memory and refresh token in `httpOnly` cookie.
+- Image block content extended to support `width` and `alignment`, with hover resize and alignment controls.
+- Browser-load-based image validation instead of URL-shape-only validation.
+- Editor behavior fixes for rapid Enter typing, todo/image paragraph insertion rules, image resize persistence, and PDF-only export flow.
+- Proper frontend forbidden state when backend returns `403` for cross-account document access.
+
+**What was wrong or missing:**
+- Earlier autosave and split flows could feel too eager and could lose fast typing in edge cases.
+- Image handling initially accepted any syntactically valid URL, and resize persistence could fail after autosave in deployed environments.
+- Export section briefly included extra HTML/TXT options before being simplified back to PDF only.
+
+**What I fixed:**
+- Switched normal typing and Enter-split persistence onto the debounced autosave model.
+- Tightened image validation to require real browser image load success and corrected image paragraph insertion behavior.
+- Simplified export back to a PDF-only action and fixed print styles to avoid extra blank pages.

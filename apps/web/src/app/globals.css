@@ -1275,6 +1275,74 @@ select:focus {
   border-radius: 28px;
 }
 
+.editor-main-shell--state {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.editor-state-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 36px 32px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 98%, transparent), var(--bg-secondary));
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.editor-state-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.editor-state-brand-text {
+  font-size: 1rem;
+}
+
+.editor-state-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 20px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.editor-state-card h2 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+
+.editor-state-copy {
+  margin: 0 auto 20px;
+  max-width: 440px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.editor-back-link--state {
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 600;
+}
+
 .editor-back-link {
   display: inline-flex;
   align-items: center;

@@ -139,6 +139,7 @@ export function DocumentWorkspace({ documentId }) {
   const [shareMessage, setShareMessage] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [imageValidationState, setImageValidationState] = useState({});
+  const [loadErrorStatus, setLoadErrorStatus] = useState(null);
 
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
@@ -697,6 +698,7 @@ export function DocumentWorkspace({ documentId }) {
 
   async function loadWorkspace() {
     setError("");
+    setLoadErrorStatus(null);
 
     try {
       const snapshot = await fetchWorkspaceSnapshot();
@@ -713,7 +715,11 @@ export function DocumentWorkspace({ documentId }) {
       setIsLoaded(true);
       setStatusText("Document loaded.");
     } catch (requestError) {
+      setDocument(null);
+      setBlocks([]);
       setError(requestError.message);
+      setLoadErrorStatus(requestError.status ?? 500);
+      setIsLoaded(true);
     }
   }
 
@@ -1557,6 +1563,35 @@ export function DocumentWorkspace({ documentId }) {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (status === "authenticated" && !document && error) {
+    const isForbidden = loadErrorStatus === 403;
+
+    return (
+      <section className="editor-page-shell page-transition">
+        <div className="editor-main-shell editor-main-shell--state">
+          <div className="editor-state-card">
+            <div className="editor-state-brand">
+              <span className="brand-icon">B</span>
+              <span className="editor-state-brand-text">BlockNote</span>
+            </div>
+            <div className="editor-state-icon" aria-hidden="true">
+              {isForbidden ? "!" : "?"}
+            </div>
+            <h2>{isForbidden ? "You do not have access to this document" : "This document could not be opened"}</h2>
+            <p className="editor-state-copy">
+              {isForbidden
+                ? "This document belongs to another account. Please switch to the owner account or open a document from your own dashboard."
+                : error}
+            </p>
+            <Link className="editor-back-link editor-back-link--state" href="/dashboard">
+              Back to dashboard
+            </Link>
           </div>
         </div>
       </section>
