@@ -40,6 +40,7 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Single document canvas, continuous block flow
 - Subtle gutter with drag handle + block type badge
 - Image block: click image to edit URL (input hidden when valid)
+- Image blocks support hover resize from the corner plus a floating alignment control (left/center/right); width and alignment are stored in image block JSON
 - Auto-growing textareas
 - Slash menu for block type changes (`/` at start of empty block)
 - Drag reorder with backend persistence via `/documents/:id/blocks/reorder`

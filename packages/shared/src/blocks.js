@@ -13,9 +13,12 @@ const todoBlockContentSchema = z.object({
 const dividerBlockContentSchema = z.object({}).strict();
 
 const imageUrlSchema = z.union([z.literal(""), z.string().url("Image block requires a valid URL.")]);
+const imageAlignmentSchema = z.enum(["left", "center", "right"]);
 
 const imageBlockContentSchema = z.object({
-  url: imageUrlSchema
+  url: imageUrlSchema,
+  width: z.number().min(30).max(100).default(100),
+  alignment: imageAlignmentSchema.default("center")
 });
 
 export function getBlockContentSchema(type) {

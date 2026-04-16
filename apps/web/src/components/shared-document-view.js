@@ -13,6 +13,20 @@ function isImageUrl(value) {
   }
 }
 
+function normalizeImageContent(content = {}) {
+  return {
+    url: typeof content.url === "string" ? content.url : "",
+    width:
+      typeof content.width === "number" && Number.isFinite(content.width)
+        ? Math.max(30, Math.min(100, content.width))
+        : 100,
+    alignment:
+      content.alignment === "left" || content.alignment === "right" || content.alignment === "center"
+        ? content.alignment
+        : "center"
+  };
+}
+
 function renderBlock(block) {
   if (block.type === "heading_1") {
     return <h2 className="editor-heading-one">{block.content.text}</h2>;
@@ -40,17 +54,24 @@ function renderBlock(block) {
   }
 
   if (block.type === "image") {
-    if (!block.content.url) {
+    const imageContent = normalizeImageContent(block.content);
+
+    if (!imageContent.url) {
       return <p className="editor-image-hint-text">No image URL provided.</p>;
     }
 
-    if (!isImageUrl(block.content.url)) {
+    if (!isImageUrl(imageContent.url)) {
       return <p className="editor-image-error">Image URL is invalid.</p>;
     }
 
     return (
-      <div className="editor-image-shell">
-        <img alt="Shared document visual" className="editor-image-preview" src={block.content.url} />
+      <div
+        className={`editor-image-preview-shell editor-image-preview-shell--${imageContent.alignment} editor-image-preview-shell--readonly`}
+        style={{ ["--image-width"]: `${imageContent.width}%` }}
+      >
+        <div className="editor-image-preview-button editor-image-preview-button--readonly">
+          <img alt="Shared document visual" className="editor-image-preview" src={imageContent.url} />
+        </div>
       </div>
     );
   }

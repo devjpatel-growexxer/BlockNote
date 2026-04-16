@@ -1977,6 +1977,28 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+
+.editor-image-preview-shell--left {
+  align-items: flex-start;
+}
+
+.editor-image-preview-shell--center {
+  align-items: center;
+}
+
+.editor-image-preview-shell--right {
+  align-items: flex-end;
+}
+
+.editor-image-preview-button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(100%, var(--image-width, 100%));
   border: none;
   padding: 0;
   background: transparent;
@@ -1984,17 +2006,184 @@ select:focus {
   cursor: pointer;
 }
 
+.editor-image-preview-button--readonly {
+  cursor: default;
+}
+
 .editor-image-preview {
   border-radius: var(--radius-md);
-  min-height: 120px;
-  max-height: 420px;
-  object-fit: cover;
   width: 100%;
+  height: auto;
+  display: block;
+  max-height: none;
+  object-fit: contain;
 }
 
 .editor-image-hint {
   font-size: 0.8125rem;
   color: var(--text-tertiary);
+}
+
+.editor-image-floating-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 92%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.editor-image-preview-shell:hover .editor-image-floating-bar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.editor-image-align-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.editor-image-align-btn:hover {
+  background: var(--bg-hover);
+}
+
+.editor-image-align-btn--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.editor-image-align-icon {
+  position: relative;
+  display: inline-flex;
+  width: 14px;
+  height: 12px;
+  align-items: center;
+}
+
+.editor-image-align-icon::before,
+.editor-image-align-icon::after,
+.editor-image-align-icon span {
+  content: "";
+  position: absolute;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.editor-image-align-icon::before {
+  top: 1px;
+  width: 14px;
+  left: 0;
+}
+
+.editor-image-align-icon::after {
+  bottom: 1px;
+  width: 14px;
+  left: 0;
+}
+
+.editor-image-align-icon span {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+}
+
+.editor-image-align-icon--left span {
+  left: 0;
+}
+
+.editor-image-align-icon--center span {
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.editor-image-align-icon--right span {
+  right: 0;
+}
+.editor-image-resize-handle {
+  position: absolute;
+  bottom: 36px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.editor-image-preview-shell--left .editor-image-resize-handle {
+  left: var(--image-width, 100%);
+  transform: translateX(-45%);
+}
+
+.editor-image-preview-shell--center .editor-image-resize-handle {
+  left: calc(50% + (var(--image-width, 100%) / 2));
+  transform: translateX(-45%);
+}
+
+.editor-image-preview-shell--right .editor-image-resize-handle {
+  left: 100%;
+  transform: translateX(-55%);
+}
+
+.editor-image-resize-handle::before,
+.editor-image-resize-handle::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--text-secondary);
+  left: 5px;
+}
+
+.editor-image-resize-handle::before {
+  top: 6px;
+}
+
+.editor-image-resize-handle::after {
+  bottom: 6px;
+}
+
+.editor-image-preview-shell:hover .editor-image-resize-handle {
+  opacity: 1;
+}
+
+.editor-image-resize-handle:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.editor-image-preview-shell--left .editor-image-resize-handle:hover {
+  transform: translateX(-45%) scale(1.05);
+}
+
+.editor-image-preview-shell--center .editor-image-resize-handle:hover {
+  transform: translateX(-45%) scale(1.05);
+}
+
+.editor-image-preview-shell--right .editor-image-resize-handle:hover {
+  transform: translateX(-55%) scale(1.05);
 }
 
 .editor-url-input {

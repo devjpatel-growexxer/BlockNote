@@ -24,7 +24,7 @@ function getBlockText(block) {
   }
 
   if (block.type === "image") {
-    return block.content.url;
+    return normalizeImageContent(block.content).url;
   }
 
   if (isTextBlock(block.type)) {
@@ -76,7 +76,7 @@ function createBlockContent(type, text = "") {
   }
 
   if (type === "image") {
-    return { url: text };
+    return { url: text, width: 100, alignment: "center" };
   }
 
   if (type === "divider") {
@@ -84,6 +84,20 @@ function createBlockContent(type, text = "") {
   }
 
   return { text };
+}
+
+function normalizeImageContent(content = {}) {
+  return {
+    url: typeof content.url === "string" ? content.url : "",
+    width:
+      typeof content.width === "number" && Number.isFinite(content.width)
+        ? Math.max(30, Math.min(100, content.width))
+        : 100,
+    alignment:
+      content.alignment === "left" || content.alignment === "right" || content.alignment === "center"
+        ? content.alignment
+        : "center"
+  };
 }
 
 const SLASH_ICONS = {
@@ -95,6 +109,12 @@ const SLASH_ICONS = {
   divider: "—",
   image: "🖼"
 };
+
+const IMAGE_ALIGNMENT_OPTIONS = [
+  { value: "left", label: "Align left" },
+  { value: "center", label: "Align center" },
+  { value: "right", label: "Align right" }
+];
 
 export function DocumentWorkspace({ documentId }) {
   const router = useRouter();
@@ -118,6 +138,7 @@ export function DocumentWorkspace({ documentId }) {
   const [shareLink, setShareLink] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
+  const [imageValidationState, setImageValidationState] = useState({});
 
   const inputRefs = useRef(new Map());
   const pendingFocus = useRef(null);
@@ -134,6 +155,9 @@ export function DocumentWorkspace({ documentId }) {
   const autosaveQueuedRef = useRef(false);
   const documentVersionRef = useRef(1);
   const shareShellRef = useRef(null);
+  const imageResizeStateRef = useRef(null);
+  const pendingImageParagraphRef = useRef({});
+  const imageAutoParagraphRef = useRef({});
 
   const blockIds = useMemo(() => blocks.map((block) => block.id), [blocks]);
   const slashOptions = useMemo(() => {
@@ -166,6 +190,88 @@ export function DocumentWorkspace({ documentId }) {
   }, [blocks]);
 
   useEffect(() => {
+    const trackedImages = blocks
+      .filter((block) => block.type === "image")
+      .map((block) => ({
+        id: block.id,
+        url: normalizeImageContent(block.content).url
+      }))
+      .filter((entry) => entry.url && isValidImageUrl(entry.url));
+
+    const activeLoaders = [];
+
+    trackedImages.forEach(({ id, url }) => {
+      const currentState = imageValidationState[id];
+      if (currentState?.url === url && (currentState.status === "loaded" || currentState.status === "error" || currentState.status === "loading")) {
+        return;
+      }
+
+      setImageValidationState((current) => ({
+        ...current,
+        [id]: { url, status: "loading" }
+      }));
+
+      const image = new window.Image();
+      image.onload = () => {
+        setImageValidationState((current) => ({
+          ...current,
+          [id]: { url, status: "loaded" }
+        }));
+
+        if (
+          pendingImageParagraphRef.current[id] === url &&
+          imageAutoParagraphRef.current[id] !== url
+        ) {
+          imageAutoParagraphRef.current[id] = url;
+          delete pendingImageParagraphRef.current[id];
+          setImageEditing(id, false);
+          const currentIndex = blocksRef.current.findIndex((entry) => entry.id === id);
+          if (currentIndex >= 0) {
+            void insertNewBlockAfter(currentIndex, "paragraph", "", 0)
+              .then(() => {
+                setStatusText("Inserted paragraph below image.");
+                setError("");
+              })
+              .catch((requestError) => {
+                setError(requestError.message);
+                markSaveError();
+              });
+          }
+        }
+      };
+      image.onerror = () => {
+        setImageValidationState((current) => ({
+          ...current,
+          [id]: { url, status: "error" }
+        }));
+        delete pendingImageParagraphRef.current[id];
+      };
+      image.src = url;
+      activeLoaders.push(image);
+    });
+
+    setImageValidationState((current) => {
+      let changed = false;
+      const next = { ...current };
+      Object.keys(next).forEach((blockId) => {
+        const stillPresent = trackedImages.some((entry) => entry.id === blockId && entry.url === next[blockId]?.url);
+        if (!stillPresent) {
+          delete next[blockId];
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
+
+    return () => {
+      activeLoaders.forEach((image) => {
+        image.onload = null;
+        image.onerror = null;
+      });
+    };
+  }, [blocks, imageValidationState]);
+
+  useEffect(() => {
     return () => {
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
@@ -173,6 +279,58 @@ export function DocumentWorkspace({ documentId }) {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    function handlePointerMove(event) {
+      const resizeState = imageResizeStateRef.current;
+      if (!resizeState) {
+        return;
+      }
+
+      const delta = event.clientX - resizeState.startX;
+      const nextWidth = resizeState.startWidth + (delta / resizeState.containerWidth) * 100;
+
+      setBlocks((current) =>
+        current.map((entry) =>
+          entry.id === resizeState.blockId
+            ? {
+                ...entry,
+                content: {
+                  ...normalizeImageContent(entry.content),
+                  width: Math.max(30, Math.min(100, nextWidth))
+                }
+              }
+            : entry
+        )
+      );
+    }
+
+    function handlePointerUp() {
+      const resizeState = imageResizeStateRef.current;
+      if (!resizeState) {
+        return;
+      }
+
+      const resizedBlock = blocksRef.current.find((entry) => entry.id === resizeState.blockId);
+      if (resizedBlock) {
+        markBlockDirty(resizedBlock);
+        scheduleAutoSave();
+        setStatusText("Image resized.");
+      }
+
+      imageResizeStateRef.current = null;
+      window.document.body.style.userSelect = "";
+      window.document.body.style.cursor = "";
+    }
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", handlePointerUp);
     };
   }, []);
 
@@ -669,16 +827,68 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   function handleImageChange(block, value) {
+    const imageContent = normalizeImageContent(block.content);
+    delete imageAutoParagraphRef.current[block.id];
+    if (!imageContent.url.trim() && value.trim()) {
+      pendingImageParagraphRef.current[block.id] = value;
+    } else if (!value.trim()) {
+      delete pendingImageParagraphRef.current[block.id];
+    }
     const nextBlock = {
       ...block,
       content: {
-        ...block.content,
+        ...imageContent,
         url: value
       }
     };
     updateLocalBlock(block.id, () => nextBlock);
     markBlockDirty(nextBlock);
     scheduleAutoSave();
+  }
+
+  function handleImageLayoutChange(blockId, changes) {
+    const block = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!block) {
+      return;
+    }
+
+    const nextBlock = {
+      ...block,
+      content: {
+        ...normalizeImageContent(block.content),
+        ...changes
+      }
+    };
+
+    updateLocalBlock(blockId, () => nextBlock);
+    markBlockDirty(nextBlock);
+    scheduleAutoSave();
+    setStatusText("Image layout updated.");
+  }
+
+  function handleImageResizeStart(event, blockId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const container = event.currentTarget.closest("[data-image-frame]");
+    if (!(container instanceof HTMLElement)) {
+      return;
+    }
+
+    const block = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!block) {
+      return;
+    }
+
+    const imageContent = normalizeImageContent(block.content);
+    imageResizeStateRef.current = {
+      blockId,
+      startX: event.clientX,
+      startWidth: imageContent.width,
+      containerWidth: Math.max(container.getBoundingClientRect().width, 1)
+    };
+    window.document.body.style.userSelect = "none";
+    window.document.body.style.cursor = "ew-resize";
   }
 
   async function handleTodoToggle(blockId, checked) {
@@ -906,7 +1116,7 @@ export function DocumentWorkspace({ documentId }) {
     const left = currentText.slice(0, cursorPosition);
     const right = currentText.slice(cursorPosition);
     const currentType = block.type;
-    const nextType = currentType === "todo" ? "todo" : "paragraph";
+    const nextType = "paragraph";
     const updatedBlock = {
       ...block,
       content:
@@ -1093,32 +1303,84 @@ export function DocumentWorkspace({ documentId }) {
 
     if (block.type === "image") {
       const isEditing = editingImageIds.has(block.id);
-      const hasValidUrl = isValidImageUrl(block.content.url);
+      const imageContent = normalizeImageContent(block.content);
+      const hasUrlShape = isValidImageUrl(imageContent.url);
+      const validationState = imageValidationState[block.id];
+      const isCheckingImage =
+        Boolean(imageContent.url) &&
+        hasUrlShape &&
+        validationState?.url === imageContent.url &&
+        validationState?.status === "loading";
+      const hasLoadedImage =
+        Boolean(imageContent.url) &&
+        hasUrlShape &&
+        validationState?.url === imageContent.url &&
+        validationState?.status === "loaded";
+      const hasImageError =
+        Boolean(imageContent.url) &&
+        (!hasUrlShape ||
+          (validationState?.url === imageContent.url && validationState?.status === "error"));
 
       return (
         <div className="editor-image-shell">
-          {hasValidUrl && !isEditing ? (
-            <button
-              className="editor-image-preview-shell"
-              onClick={() => setImageEditing(block.id, true)}
-              type="button"
+          {hasLoadedImage && !isEditing ? (
+            <div
+              className={`editor-image-preview-shell editor-image-preview-shell--${imageContent.alignment}`}
+              data-image-frame
+              style={{ ["--image-width"]: `${imageContent.width}%` }}
             >
-              <img
-                alt="Block visual"
-                className="editor-image-preview"
-                src={block.content.url}
-                draggable={false}
-                onDragStart={(e) => e.preventDefault()}
+              <div className="editor-image-floating-bar" onClick={(event) => event.stopPropagation()}>
+                {IMAGE_ALIGNMENT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={
+                      imageContent.alignment === option.value
+                        ? "editor-image-align-btn editor-image-align-btn--active"
+                        : "editor-image-align-btn"
+                    }
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleImageLayoutChange(block.id, { alignment: option.value });
+                    }}
+                    title={option.label}
+                    type="button"
+                  >
+                    <span className={`editor-image-align-icon editor-image-align-icon--${option.value}`}>
+                      <span />
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <button
+                className="editor-image-preview-button"
+                onClick={() => setImageEditing(block.id, true)}
+                type="button"
+              >
+                <img
+                  alt="Block visual"
+                  className="editor-image-preview"
+                  src={imageContent.url}
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                />
+                <span className="editor-image-hint">Click image to edit URL</span>
+              </button>
+              <button
+                aria-label="Resize image"
+                className="editor-image-resize-handle"
+                onMouseDown={(event) => handleImageResizeStart(event, block.id)}
+                onClick={(event) => event.preventDefault()}
+                type="button"
               />
-              <span className="editor-image-hint">Click image to edit URL</span>
-            </button>
+            </div>
           ) : (
             <>
               <input
                 className="editor-url-input"
                 onBlur={() => {
                   void handleBlur(block.id);
-                  if (isValidImageUrl(block.content.url)) {
+                  if (hasLoadedImage) {
                     setImageEditing(block.id, false);
                   }
                 }}
@@ -1126,14 +1388,25 @@ export function DocumentWorkspace({ documentId }) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    if (isValidImageUrl(block.content.url)) {
+                    if (hasLoadedImage || !imageContent.url) {
                       void handleBlur(block.id);
-                      setImageEditing(block.id, false);
+                      if (hasLoadedImage) {
+                        setImageEditing(block.id, false);
+                      }
+                      void insertNewBlockAfter(index, "paragraph", "", 0)
+                        .then(() => {
+                          setStatusText("Inserted paragraph below image.");
+                          setError("");
+                        })
+                        .catch((requestError) => {
+                          setError(requestError.message);
+                          markSaveError();
+                        });
                     }
                     return;
                   }
 
-                  if (event.key === "Backspace" && !block.content.url) {
+                  if (event.key === "Backspace" && !imageContent.url) {
                     event.preventDefault();
                     void (async () => {
                       await handleDeleteEmptyBlock(index);
@@ -1143,13 +1416,15 @@ export function DocumentWorkspace({ documentId }) {
                 placeholder="Paste image URL and press Enter…"
                 ref={(element) => setInputRef(block.id, element)}
                 type="url"
-                value={block.content.url}
+                value={imageContent.url}
               />
-              {block.content.url && !hasValidUrl ? (
+              {isCheckingImage ? (
+                <p className="editor-image-hint-text">Checking image link…</p>
+              ) : hasImageError ? (
                 <p className="editor-image-error">
-                  ⚠ Invalid image URL. Please paste a direct link ending in .jpg, .png, .gif, .webp, etc.
+                  ⚠ Invalid image URL. Please use a direct image link that actually loads.
                 </p>
-              ) : !block.content.url ? (
+              ) : !imageContent.url ? (
                 <p className="editor-image-hint-text">
                   Paste a direct image link and press Enter to preview.
                 </p>

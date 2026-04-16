@@ -30,7 +30,7 @@ export const DEFAULT_BLOCK_CONTENT = {
   todo: { text: "", checked: false },
   code: { text: "" },
   divider: {},
-  image: { url: "" }
+  image: { url: "", width: 100, alignment: "center" }
 };
 
 export const API_PREFIX = "/api/v1";
