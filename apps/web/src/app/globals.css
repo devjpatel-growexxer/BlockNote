@@ -1203,6 +1203,60 @@ select:focus {
   gap: 6px;
 }
 
+.editor-export-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.editor-export-copy {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.editor-export-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.editor-export-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.editor-export-btn:hover {
+  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-strong));
+}
+
+.editor-export-btn--primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 94%, white), var(--accent));
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  color: var(--text-inverse);
+}
+
+.editor-export-btn--primary:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 94%, white), var(--accent-hover));
+}
+
 .editor-sidebar-label {
   font-size: 0.75rem;
   font-weight: 700;
@@ -2567,6 +2621,10 @@ select:focus {
     margin-top: 8px;
   }
 
+  .editor-export-card {
+    padding: 12px;
+  }
+
   .editor-main-shell {
     height: auto;
     overflow: visible;
@@ -2588,6 +2646,62 @@ select:focus {
 
   .site-header {
     padding: 0 12px;
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  .site-header,
+  .editor-sidebar,
+  .block-float-bar,
+  .bulk-action-bar,
+  .block-gap-inserter,
+  .editor-block-gutter,
+  .editor-image-floating-bar,
+  .editor-image-resize-handle,
+  .editor-image-hint,
+  .editor-end-spacer,
+  .editor-trash-zone {
+    display: none !important;
+  }
+
+  .app-shell,
+  .editor-page-shell,
+  .editor-layout,
+  .editor-main-shell,
+  .editor-canvas {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .editor-paper {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  .editor-block-row,
+  .editor-image-shell,
+  .editor-image-preview-shell,
+  .editor-image-preview-button {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .editor-image-preview {
+    max-width: 100% !important;
+    height: auto !important;
   }
 }
 

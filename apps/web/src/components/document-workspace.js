@@ -687,6 +687,14 @@ export function DocumentWorkspace({ documentId }) {
     }
   }
 
+  function handleExportPdf() {
+    setStatusText("Preparing PDF export...");
+    if (document?.title) {
+      window.document.title = `${document.title} | BlockNote Export`;
+    }
+    window.print();
+  }
+
   async function loadWorkspace() {
     setError("");
 
@@ -1653,6 +1661,22 @@ export function DocumentWorkspace({ documentId }) {
               >
                 {saveState === "saving" ? "Saving…" : "Save"}
               </button>
+            </div>
+
+            <div className="editor-export-card">
+              <div className="editor-sidebar-heading">
+                <span className="editor-sidebar-label">Export</span>
+                <span className="editor-export-copy">Export this document as PDF with images preserved.</span>
+              </div>
+              <div className="editor-export-actions">
+                <button
+                  className="editor-export-btn editor-export-btn--primary"
+                  onClick={handleExportPdf}
+                  type="button"
+                >
+                  Export PDF
+                </button>
+              </div>
             </div>
           </div>
 
