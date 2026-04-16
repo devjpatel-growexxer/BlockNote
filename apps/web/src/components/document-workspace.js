@@ -154,6 +154,7 @@ export function DocumentWorkspace({ documentId }) {
   const dirtyBlocksRef = useRef(new Map());
   const isAutosaveRunningRef = useRef(false);
   const autosaveQueuedRef = useRef(false);
+  const activeKeysRef = useRef(new Set());
   const documentVersionRef = useRef(1);
   const shareShellRef = useRef(null);
   const imageResizeStateRef = useRef(null);
@@ -391,6 +392,35 @@ export function DocumentWorkspace({ documentId }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Track all actively pressed keys to pause auto-saving while typing
+  useEffect(() => {
+    function handleKeyDownCount(e) {
+      activeKeysRef.current.add(e.key);
+    }
+    function handleKeyUpCount(e) {
+      activeKeysRef.current.delete(e.key);
+      if (activeKeysRef.current.size === 0 && dirtyBlocksRef.current.size > 0 && !isAutosaveRunningRef.current) {
+        scheduleAutoSave();
+      }
+    }
+    function handleWindowBlur() {
+      activeKeysRef.current.clear();
+      if (dirtyBlocksRef.current.size > 0 && !isAutosaveRunningRef.current) {
+        void flushAutosaveNow();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDownCount);
+    window.addEventListener("keyup", handleKeyUpCount);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDownCount);
+      window.removeEventListener("keyup", handleKeyUpCount);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
   }, []);
 
   useEffect(() => {
@@ -843,6 +873,10 @@ export function DocumentWorkspace({ documentId }) {
       clearTimeout(autosaveTimerRef.current);
     }
     autosaveTimerRef.current = setTimeout(() => {
+      if (activeKeysRef.current.size > 0) {
+        // A key is currently held down. Pause save and wait for keyup event.
+        return;
+      }
       void flushAutosaveNow();
     }, 1000);
   }
