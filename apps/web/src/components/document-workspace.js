@@ -291,6 +291,8 @@ export function DocumentWorkspace({ documentId }) {
 
       const delta = event.clientX - resizeState.startX;
       const nextWidth = resizeState.startWidth + (delta / resizeState.containerWidth) * 100;
+      const clampedWidth = Math.max(30, Math.min(100, nextWidth));
+      resizeState.latestWidth = clampedWidth;
 
       setBlocks((current) =>
         current.map((entry) =>
@@ -299,7 +301,7 @@ export function DocumentWorkspace({ documentId }) {
                 ...entry,
                 content: {
                   ...normalizeImageContent(entry.content),
-                  width: Math.max(30, Math.min(100, nextWidth))
+                  width: clampedWidth
                 }
               }
             : entry
@@ -315,7 +317,18 @@ export function DocumentWorkspace({ documentId }) {
 
       const resizedBlock = blocksRef.current.find((entry) => entry.id === resizeState.blockId);
       if (resizedBlock) {
-        markBlockDirty(resizedBlock);
+        const finalBlock = {
+          ...resizedBlock,
+          content: {
+            ...normalizeImageContent(resizedBlock.content),
+            width: resizeState.latestWidth ?? normalizeImageContent(resizedBlock.content).width
+          }
+        };
+
+        setBlocks((current) =>
+          current.map((entry) => (entry.id === resizeState.blockId ? finalBlock : entry))
+        );
+        markBlockDirty(finalBlock);
         scheduleAutoSave();
         setStatusText("Image resized.");
       }
@@ -885,7 +898,8 @@ export function DocumentWorkspace({ documentId }) {
       blockId,
       startX: event.clientX,
       startWidth: imageContent.width,
-      containerWidth: Math.max(container.getBoundingClientRect().width, 1)
+      containerWidth: Math.max(container.getBoundingClientRect().width, 1),
+      latestWidth: imageContent.width
     };
     window.document.body.style.userSelect = "none";
     window.document.body.style.cursor = "ew-resize";
