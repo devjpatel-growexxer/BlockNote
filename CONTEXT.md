@@ -43,6 +43,9 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Auto-growing textareas
 - Slash menu for block type changes (`/` at start of empty block)
 - Drag reorder with backend persistence via `/documents/:id/blocks/reorder`
+- Document shell uses a left sidebar for title, share, and save controls, with a rounded back-to-dashboard button pinned at the bottom
+- Floating block bar stays inside the editor canvas and is intentionally separate from the sidebar
+- Editor canvas scrolling is handled by the main shell on desktop; on small screens the layout falls back to normal page scrolling
 - Save indicator shows Saving/Saved/Failed without toolbar layout shift
 - Header and home CTA render skeletons while auth status is restoring, so guest actions do not flash for logged-in users on refresh
 

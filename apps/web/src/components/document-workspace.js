@@ -1136,10 +1136,6 @@ export function DocumentWorkspace({ documentId }) {
                   if (event.key === "Backspace" && !block.content.url) {
                     event.preventDefault();
                     void (async () => {
-                      // First try to remove an empty block above
-                      const removedPrevious = await handleDeletePreviousEmptyBlock(index);
-                      if (removedPrevious) return;
-                      // Otherwise delete this image block itself
                       await handleDeleteEmptyBlock(index);
                     })();
                   }
@@ -1243,17 +1239,28 @@ export function DocumentWorkspace({ documentId }) {
   if (status === "loading" || (status === "authenticated" && !isLoaded)) {
     return (
       <section className="editor-page-shell page-transition">
-        <div className="editor-topbar" style={{ gap: 16 }}>
-          <div className="skeleton-shimmer" style={{ width: 80, height: 20 }} />
-          <div className="skeleton-shimmer" style={{ width: 140, height: 24, marginLeft: 16 }} />
-        </div>
-        <div className="editor-paper">
-          {[73, 58, 60, 48, 79, 75].map((width, i) => (
-            <div key={i} className="editor-block-row" style={{ padding: '8px 0', border: 'none' }}>
-               <div className="editor-block-gutter" style={{ width: 44 }} />
-               <div className="skeleton-shimmer" style={{ width: `${width}%`, height: 20, borderRadius: 4 }} />
+        <div className="editor-layout">
+          <aside className="editor-sidebar editor-sidebar--loading">
+            <div className="editor-sidebar-main">
+              <div className="skeleton-shimmer" style={{ width: "42%", height: 18 }} />
+              <div className="skeleton-shimmer" style={{ width: "86%", height: 24, borderRadius: 8 }} />
+              <div className="skeleton-shimmer" style={{ width: "100%", height: 42, borderRadius: 14 }} />
+              <div className="skeleton-shimmer" style={{ width: "100%", height: 42, borderRadius: 14 }} />
             </div>
-          ))}
+            <div className="skeleton-shimmer" style={{ width: "100%", height: 46, borderRadius: 999 }} />
+          </aside>
+          <div className="editor-main-shell">
+            <div className="editor-canvas">
+              <div className="editor-paper">
+                {[73, 58, 60, 48, 79, 75].map((width, i) => (
+                  <div key={i} className="editor-block-row" style={{ padding: "8px 0", border: "none" }}>
+                    <div className="editor-block-gutter" style={{ width: 44 }} />
+                    <div className="skeleton-shimmer" style={{ width: `${width}%`, height: 20, borderRadius: 4 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     );
@@ -1261,104 +1268,112 @@ export function DocumentWorkspace({ documentId }) {
 
   return (
     <section className="editor-page-shell">
-      <div className="editor-topbar">
-        <div className="editor-topbar-left">
-          <Link className="editor-back-link" href="/dashboard">
-            ← Back
-          </Link>
-          <span className="editor-doc-name">{document?.title ?? "Untitled"}</span>
-        </div>
-        <div className="editor-toolbar">
-          <div className="share-shell" ref={shareShellRef}>
-            <button
-              className="share-btn"
-              onClick={() => setShareOpen((current) => !current)}
-              type="button"
-            >
-              Share
-            </button>
-            {shareOpen ? (
-              <div className="share-panel">
-                <p className="share-panel-title">Public read-only link</p>
-                <p className="share-panel-copy">
-                  Anyone with this link can view. Editing is blocked at API level.
-                </p>
-                <div className="share-controls">
-                  <button
-                    className="share-action-btn"
-                    disabled={shareBusy}
-                    onClick={() => void handleGenerateShareLink()}
-                    type="button"
-                  >
-                    {shareBusy ? "Working..." : document?.isPublic ? "Rotate link" : "Generate link"}
-                  </button>
-                  <button
-                    className="share-action-btn share-action-btn--danger"
-                    disabled={shareBusy || !document?.isPublic}
-                    onClick={() => void handleDisableShareLink()}
-                    type="button"
-                  >
-                    Disable
-                  </button>
-                </div>
-                {shareLink ? (
-                  <div className="share-link-row">
-                    <input className="share-link-input" readOnly value={shareLink} />
-                    <button className="share-copy-btn" onClick={() => void handleCopyShareLink()} type="button">
-                      Copy
-                    </button>
-                  </div>
-                ) : document?.isPublic ? (
-                  <p className="share-panel-note">
-                    Sharing is enabled, but the previous token is hidden. Generate a new link to copy.
-                  </p>
-                ) : (
-                  <p className="share-panel-note">Sharing is currently off.</p>
-                )}
-                {shareMessage ? <p className="share-panel-message">{shareMessage}</p> : null}
-              </div>
-            ) : null}
-          </div>
-          <div
-            className={`save-indicator${saveState === "idle" ? " save-indicator--idle" : saveState === "error" ? " save-indicator--error" : ""}`}
-            aria-live="polite"
-          >
-            {saveState === "saving" ? (
-              <span className="save-spinner" />
-            ) : saveState === "saved" ? (
-              <span className="save-check" />
-            ) : saveState === "error" ? (
-              <span className="save-error-icon">⚠</span>
-            ) : (
-              <span className="save-cloud-icon">☁</span>
-            )}
-            <span className="save-text">
-              {saveState === "saving"
-                ? "Saving…"
-                : saveState === "saved"
-                  ? lastSavedAt
-                    ? `Saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
-                    : "Saved"
-                  : saveState === "error"
-                    ? "Save failed"
-                    : lastSavedAt
-                      ? `Auto‑saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
-                      : "Auto‑save on"}
-            </span>
-          </div>
-          <button
-            className="save-btn"
-            disabled={saveState === "saving"}
-            onClick={() => void handleSaveAll()}
-            title="Save all (Ctrl+S)"
-            type="button"
-          >
-            {saveState === "saving" ? "Saving…" : "💾 Save"}
-          </button>
-        </div>
-      </div>
+      <div className="editor-layout">
+        <aside className="editor-sidebar">
+          <div className="editor-sidebar-main">
+            <div className="editor-sidebar-heading">
+              <span className="editor-sidebar-label">Document</span>
+              <span className="editor-doc-name">{document?.title ?? "Untitled"}</span>
+            </div>
 
-      <div className="editor-canvas">
+            <div
+              className={`save-indicator editor-sidebar-save-indicator${saveState === "idle" ? " save-indicator--idle" : saveState === "error" ? " save-indicator--error" : ""}`}
+              aria-live="polite"
+            >
+              {saveState === "saving" ? (
+                <span className="save-spinner" />
+              ) : saveState === "saved" ? (
+                <span className="save-check" />
+              ) : saveState === "error" ? (
+                <span className="save-error-icon">⚠</span>
+              ) : (
+                <span className="save-cloud-icon">☁</span>
+              )}
+              <span className="save-text">
+                {saveState === "saving"
+                  ? "Saving…"
+                  : saveState === "saved"
+                    ? lastSavedAt
+                      ? `Saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
+                      : "Saved"
+                    : saveState === "error"
+                      ? "Save failed"
+                      : lastSavedAt
+                        ? `Auto‑saved at ${lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}`
+                        : "Auto‑save on"}
+              </span>
+            </div>
+
+            <div className="editor-sidebar-actions">
+              <div className="share-shell" ref={shareShellRef}>
+                <button
+                  className="share-btn editor-sidebar-action-btn"
+                  onClick={() => setShareOpen((current) => !current)}
+                  type="button"
+                >
+                  Share
+                </button>
+                {shareOpen ? (
+                  <div className="share-panel editor-sidebar-share-panel">
+                    <p className="share-panel-title">Public read-only link</p>
+                    <p className="share-panel-copy">
+                      Anyone with this link can view. Editing is blocked at API level.
+                    </p>
+                    <div className="share-controls">
+                      <button
+                        className="share-action-btn"
+                        disabled={shareBusy}
+                        onClick={() => void handleGenerateShareLink()}
+                        type="button"
+                      >
+                        {shareBusy ? "Working..." : document?.isPublic ? "Rotate link" : "Generate link"}
+                      </button>
+                      <button
+                        className="share-action-btn share-action-btn--danger"
+                        disabled={shareBusy || !document?.isPublic}
+                        onClick={() => void handleDisableShareLink()}
+                        type="button"
+                      >
+                        Disable
+                      </button>
+                    </div>
+                    {shareLink ? (
+                      <div className="share-link-row">
+                        <input className="share-link-input" readOnly value={shareLink} />
+                        <button className="share-copy-btn" onClick={() => void handleCopyShareLink()} type="button">
+                          Copy
+                        </button>
+                      </div>
+                    ) : document?.isPublic ? (
+                      <p className="share-panel-note">
+                        Sharing is enabled, but the previous token is hidden. Generate a new link to copy.
+                      </p>
+                    ) : (
+                      <p className="share-panel-note">Sharing is currently off.</p>
+                    )}
+                    {shareMessage ? <p className="share-panel-message">{shareMessage}</p> : null}
+                  </div>
+                ) : null}
+              </div>
+              <button
+                className="save-btn editor-sidebar-action-btn"
+                disabled={saveState === "saving"}
+                onClick={() => void handleSaveAll()}
+                title="Save all (Ctrl+S)"
+                type="button"
+              >
+                {saveState === "saving" ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+
+          <Link className="editor-back-link editor-back-link--sidebar" href="/dashboard">
+            ← Back to dashboard
+          </Link>
+        </aside>
+
+        <div className="editor-main-shell">
+          <div className="editor-canvas">
         <h1 className="document-title">{document?.title ?? "Untitled"}</h1>
         <p className="document-subtitle">
           {document
@@ -1557,6 +1572,8 @@ export function DocumentWorkspace({ documentId }) {
           )}
         </div>
         <div aria-hidden="true" className="editor-end-spacer" />
+      </div>
+        </div>
       </div>
 
       {/* Trash drop zone — fixed at bottom, only visible while dragging */}
