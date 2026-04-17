@@ -11,9 +11,7 @@ loadEnvConfig(repoRoot);
 
 const nextConfig = {
   output: "standalone",
-  experimental: {
-    outputFileTracingRoot: repoRoot
-  },
+  outputFileTracingRoot: repoRoot,
   reactStrictMode: true,
   transpilePackages: ["@blocknote/shared"],
   env: {
