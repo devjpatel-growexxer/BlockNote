@@ -183,3 +183,50 @@ Stabilize backend and editor behavior: autosave/versioning, auth/session flow ex
 - Switched normal typing and Enter-split persistence onto the debounced autosave model.
 - Tightened image validation to require real browser image load success and corrected image paragraph insertion behavior.
 - Simplified export back to a PDF-only action and fixed print styles to avoid extra blank pages.
+
+## 2026-04-16 to 2026-04-17
+**Tool:** Antigravity
+**What I asked for:**
+Stabilize the editor autosave system to prevent cursor jumping and data loss during rapid typing, Enter, and Backspace operations. Save should only happen after the user stops typing (all keys released + idle debounce).
+
+**What it generated:**
+- Global keyboard tracking via `activeKeysRef` (Set) that monitors all physically pressed keys through `keydown`/`keyup` listeners.
+- Hard save guard in `flushAutosaveNow()` that refuses to execute while any key is held down.
+- Idle-only auto-save: removed direct `scheduleAutoSave` calls from text change handlers. Saves now only trigger 1.5s after the user has completely stopped typing (via `keyup` idle debounce).
+- Optimistic block creation for Enter key: `insertNewBlockAfter()` generates a local `crypto.randomUUID()`, inserts the block into React state synchronously, and focuses the cursor instantly. The API call runs in the background.
+- Focus timing fix: `setInputRef()` ref callback checks `pendingFocus` when a new element registers, ensuring focus snaps to newly mounted textareas immediately.
+- Race condition resolution: dirty fingerprint map is cleared before merging server responses, so blocks modified during in-flight requests are excluded from server merge.
+
+**What was wrong or missing:**
+- Initial implementation had Enter and Backspace still making direct API calls during rapid key presses, causing lag.
+- Cursor disappeared when the background save swapped optimistic IDs for server IDs (React unmounted the focused node).
+- Keyup save trigger only checked dirty blocks, ignoring pending creates/deletes.
+
+**What I fixed:**
+- Reverted to direct API calls for Enter/Backspace block operations (user preference for immediate persistence).
+- Kept keyboard-aware save gating for normal text typing.
+- Debounce timer remains at 1.5s for idle detection.
+
+## 2026-04-17
+**Tool:** Antigravity
+**What I asked for:**
+Redesign the landing page to look premium, animated, and modern while maintaining the existing violet/purple color theme.
+
+**What it generated:**
+- Hero section with animated typewriter effect cycling through "organize.", "design.", "create.", "build." in a gradient text style.
+- Floating ambient gradient orbs (purple, cyan, pink) with slow drift animations in the background.
+- Glassmorphic "7 block types" showcase card with backdrop blur, staggered chip pop-in animations, and hover lift effects.
+- Features section with 6 cards (expanded from 3) that slide up on scroll via IntersectionObserver.
+- Gradient CTA buttons with inner glow, hover lift, and arrow slide animation.
+- Bottom CTA banner with radial glow and a clean footer with copyright.
+- Hidden scrollbar for a cleaner look.
+- Responsive breakpoints for 900px, 768px, and 640px.
+- Widened content area to 1280px max-width to use more horizontal space on large screens.
+
+**What was wrong or missing:**
+- Initial layout was too narrow on wide screens with too much empty space on sides.
+- "collaborate" was listed as a typewriter word but the app has no collaboration feature.
+
+**What I fixed:**
+- Widened all landing sections (hero, features, block showcase) and removed the `content-shell` max-width constraint for the landing layout.
+- Replaced "collaborate" with "design" in the typewriter rotation.

@@ -57,12 +57,32 @@ Build a Notion-like block editor with a custom input system (no block editor lib
 - Save indicator shows Saving/Saved/Failed without toolbar layout shift
 - Header and home CTA render skeletons while auth status is restoring, so guest actions do not flash for logged-in users on refresh
 
+## Autosave Architecture
+- Global keyboard tracking via `activeKeysRef` (Set) monitors all physically pressed keys
+- `keyup` event triggers `scheduleAutoSave()` only when all keys are released and dirty blocks exist
+- `scheduleAutoSave()` uses a 1.5s idle debounce before calling `flushAutosaveNow()`
+- `flushAutosaveNow()` sends dirty blocks with `baseVersion`; backend enforces version match and returns `409` on stale writes
+- Dirty fingerprint map is cleared before merging server responses to avoid overwriting in-flight edits
+- Enter (split block) and Backspace (delete block) use direct API calls for immediate persistence
+- Normal text typing defers saves to the idle debounce pipeline
+
+## Landing Page
+- Premium animated design with floating gradient orbs (purple, cyan, pink)
+- Typewriter hero effect cycling through "organize.", "design.", "create.", "build."
+- Glassmorphic block types showcase with staggered pop-in animations
+- IntersectionObserver-driven feature cards (6 cards) that slide up on scroll
+- Gradient CTA buttons with hover glow and arrow animation
+- Bottom CTA banner with radial accent glow
+- Hidden scrollbar, full-width layout (1280px max content), responsive down to 640px
+- Supports both light and dark themes via CSS custom properties
+
 ## Key Files
 ### Frontend
 - `apps/web/src/components/document-workspace.js`
 - `apps/web/src/state/auth-context.js`
 - `apps/web/src/lib/api.js`
 - `apps/web/src/app/globals.css`
+- `apps/web/src/app/page.js` (landing page with typewriter, orbs, feature grid)
 - `apps/web/src/app/login/page.js`
 - `apps/web/src/app/register/page.js`
 - `apps/web/src/app/dashboard/page.js`
@@ -148,3 +168,6 @@ Frontend requires:
    - Render backend + Postgres
    - Vercel frontend
    - Confirm latest backend/frontend are deployed together after schema/UI changes
+5. Dockerization
+   - `docker-compose.yml` and Dockerfiles for local development
+   - Multi-stage builds for production images

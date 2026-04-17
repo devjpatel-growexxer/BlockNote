@@ -558,7 +558,7 @@ export function DocumentWorkspace({ documentId }) {
       let keepSaving = true;
 
       while (keepSaving) {
-        const batch = Array.from(dirtyBlocksRef.current.values());
+        const batch = Array.from(dirtyBlocksRef.current.values()).filter(b => !String(b.id).startsWith("temp_"));
         if (batch.length === 0) {
           break;
         }
@@ -605,6 +605,10 @@ export function DocumentWorkspace({ documentId }) {
                 // If the block isn't returned, or it was locally modified while waiting for the response, ignore the server echo
                 if (!serverBlock || dirtyBlocksRef.current.has(block.id)) {
                   return block; 
+                }
+                // Prevent focus drop by retaining same object reference if contents match exactly
+                if (JSON.stringify(block.content) === JSON.stringify(serverBlock.content) && block.type === serverBlock.type) {
+                  return block;
                 }
                 return serverBlock;
               })
@@ -876,7 +880,7 @@ export function DocumentWorkspace({ documentId }) {
     }
     autosaveTimerRef.current = setTimeout(() => {
       void flushAutosaveNow();
-    }, 1500);
+    }, 1000);
   }
 
   function handleTextChange(block, value) {
@@ -1008,29 +1012,91 @@ export function DocumentWorkspace({ documentId }) {
     });
   }
 
-  async function insertNewBlockAfter(index, type = "paragraph", text = "", focusOffset = 0) {
-    const orderIndex = index >= 0 ? getTrailingOrderIndex(blocks, index) : getLeadingOrderIndex(blocks);
-    const payload = {
+  function insertNewBlockAfter(index, type = "paragraph", text = "", focusOffset = 0) {
+    const orderIndex = index >= 0 ? getTrailingOrderIndex(blocksRef.current, index) : getLeadingOrderIndex(blocksRef.current);
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const content = createBlockContent(type, text);
+
+    const optimisticBlock = {
+      id: tempId,
       type,
-      content: createBlockContent(type, text),
-      orderIndex
+      content,
+      orderIndex,
+      isTemp: true
     };
 
-    const result = await apiRequest(`/documents/${documentId}/blocks`, {
-      method: "POST",
-      token: accessToken,
-      body: payload
-    });
+    const nextRef = [...blocksRef.current];
+    const insertAt = index >= 0 ? index + 1 : 0;
+    nextRef.splice(insertAt, 0, optimisticBlock);
+    blocksRef.current = nextRef;
 
     setBlocks((current) => {
       const next = [...current];
-      const insertAt = index >= 0 ? index + 1 : 0;
-      next.splice(insertAt, 0, result.block);
+      next.splice(insertAt, 0, optimisticBlock);
+      blocksRef.current = next;
       return next;
     });
-    pendingFocus.current = { blockId: result.block.id, offset: focusOffset };
-    markSaved();
-    return result.block;
+
+    pendingFocus.current = { blockId: tempId, offset: focusOffset };
+
+    const payload = {
+      type,
+      content,
+      orderIndex
+    };
+
+    return apiRequest(`/documents/${documentId}/blocks`, {
+      method: "POST",
+      token: accessToken,
+      body: payload
+    }).then((result) => {
+      const serverBlock = result.block;
+      let finalContent = serverBlock.content;
+      let finalType = serverBlock.type;
+
+      // Merge edits typed while request was in-flight
+      const dirty = dirtyBlocksRef.current.get(tempId);
+      if (dirty) {
+        finalContent = dirty.content;
+        finalType = dirty.type;
+        dirtyBlocksRef.current.delete(tempId);
+        
+        dirtyBlocksRef.current.set(serverBlock.id, {
+          id: serverBlock.id,
+          type: finalType,
+          content: cloneContent(finalContent)
+        });
+        scheduleAutoSave();
+      }
+
+      const inputEl = inputRefs.current.get(tempId);
+      const isPhysicallyFocused = inputEl && window.document.activeElement === inputEl;
+      const isPendingFocus = pendingFocus.current?.blockId === tempId;
+      
+      let nextOffset = 0;
+      if (isPhysicallyFocused && inputEl instanceof HTMLTextAreaElement) {
+         nextOffset = inputEl.selectionStart ?? 0;
+      } else if (isPendingFocus) {
+         nextOffset = pendingFocus.current.offset;
+      }
+
+      setBlocks(current => {
+         const next = current.map(b => b.id === tempId ? { ...serverBlock, type: finalType, content: finalContent } : b);
+         blocksRef.current = next;
+         return next;
+      });
+
+      if (isPhysicallyFocused || isPendingFocus) {
+        pendingFocus.current = { blockId: serverBlock.id, offset: nextOffset };
+      }
+
+      if (inputEl) {
+        inputRefs.current.delete(tempId);
+      }
+
+      markSaved();
+      return { ...serverBlock, type: finalType, content: finalContent };
+    });
   }
 
   async function handleAddBlockAtEnd() {
@@ -1045,49 +1111,46 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   async function handleDeleteEmptyBlock(index) {
-    const block = blocks[index];
+    const block = blocksRef.current[index];
 
     if (!block) {
       return;
     }
 
-    const previousEditable = [...blocks]
+    const previousEditable = [...blocksRef.current]
       .slice(0, index)
       .reverse()
       .find((entry) => isTextBlock(entry.type));
 
+    const remaining = blocksRef.current.filter((entry) => entry.id !== block.id);
+    blocksRef.current = remaining;
+
+    setBlocks(current => {
+      const next = current.filter((entry) => entry.id !== block.id);
+      blocksRef.current = next;
+      return next;
+    });
+
+    if (previousEditable) {
+      pendingFocus.current = {
+        blockId: previousEditable.id,
+        offset: getBlockText(previousEditable).length
+      };
+      setStatusText("Removed empty block.");
+    }
+
     try {
+      markSaving();
       await apiRequest(`/blocks/${block.id}`, {
         method: "DELETE",
         token: accessToken
       });
-
-      const remaining = blocks.filter((entry) => entry.id !== block.id);
-      setBlocks(remaining);
       markSaved();
 
-      if (previousEditable) {
-        pendingFocus.current = {
-          blockId: previousEditable.id,
-          offset: getBlockText(previousEditable).length
-        };
-        setStatusText("Removed empty block.");
-        return;
+      if (!previousEditable) {
+        await insertNewBlockAfter(-1, "paragraph", "", 0);
+        setStatusText("Replaced non-editable lead with a paragraph block.");
       }
-
-      const newParagraph = await apiRequest(`/documents/${documentId}/blocks`, {
-        method: "POST",
-        token: accessToken,
-        body: {
-          type: "paragraph",
-          content: getDefaultContent("paragraph"),
-          orderIndex: getLeadingOrderIndex(remaining)
-        }
-      });
-
-      setBlocks((current) => [newParagraph.block, ...current]);
-      pendingFocus.current = { blockId: newParagraph.block.id, offset: 0 };
-      setStatusText("Replaced non-editable lead with a paragraph block.");
     } catch (requestError) {
       setError(requestError.message);
       markSaveError();
@@ -1096,7 +1159,7 @@ export function DocumentWorkspace({ documentId }) {
   }
 
   async function handleDeletePreviousEmptyBlock(index) {
-    const previous = blocks[index - 1];
+    const previous = blocksRef.current[index - 1];
 
     if (!previous) {
       return false;
@@ -1104,18 +1167,26 @@ export function DocumentWorkspace({ documentId }) {
 
     if (previous.type === "divider" || previous.type === "image") {
       try {
-        await apiRequest(`/blocks/${previous.id}`, {
+        const remaining = blocksRef.current.filter((entry) => entry.id !== previous.id);
+        blocksRef.current = remaining;
+        
+        setBlocks(current => {
+          const next = current.filter((entry) => entry.id !== previous.id);
+          blocksRef.current = next;
+          return next;
+        });
+        pendingFocus.current = { blockId: blocksRef.current[index - 1].id, offset: 0 };
+        setStatusText("Removed previous non-text block.");
+
+        apiRequest(`/blocks/${previous.id}`, {
           method: "DELETE",
           token: accessToken
+        }).catch(requestError => {
+          setError(requestError.message);
+          loadWorkspace();
         });
-
-        setBlocks((current) => current.filter((entry) => entry.id !== previous.id));
-        pendingFocus.current = { blockId: blocks[index].id, offset: 0 };
-        setStatusText("Removed previous non-text block.");
         return true;
       } catch (requestError) {
-        setError(requestError.message);
-        await loadWorkspace();
         return true;
       }
     }
@@ -1129,24 +1200,32 @@ export function DocumentWorkspace({ documentId }) {
     }
 
     try {
-      await apiRequest(`/blocks/${previous.id}`, {
+      const remaining = blocksRef.current.filter((entry) => entry.id !== previous.id);
+      blocksRef.current = remaining;
+      
+      setBlocks(current => {
+        const next = current.filter((entry) => entry.id !== previous.id);
+        blocksRef.current = next;
+        return next;
+      });
+      pendingFocus.current = { blockId: blocksRef.current[index - 1].id, offset: 0 };
+      setStatusText("Removed empty block above.");
+
+      apiRequest(`/blocks/${previous.id}`, {
         method: "DELETE",
         token: accessToken
+      }).catch(requestError => {
+        setError(requestError.message);
+        loadWorkspace();
       });
-
-      setBlocks((current) => current.filter((entry) => entry.id !== previous.id));
-      pendingFocus.current = { blockId: blocks[index].id, offset: 0 };
-      setStatusText("Removed empty block above.");
       return true;
     } catch (requestError) {
-      setError(requestError.message);
-      await loadWorkspace();
       return true;
     }
   }
 
   async function handleSplitBlock(index, cursorPosition) {
-    const block = blocks[index];
+    const block = blocksRef.current[index];
 
     if (!block) {
       return;
@@ -1163,6 +1242,7 @@ export function DocumentWorkspace({ documentId }) {
         }
       };
 
+      blocksRef.current = blocksRef.current.map(b => b.id === block.id ? nextBlock : b);
       updateLocalBlock(block.id, () => nextBlock);
       pendingFocus.current = {
         blockId: block.id,
@@ -1192,6 +1272,8 @@ export function DocumentWorkspace({ documentId }) {
           : { ...block.content, text: left }
     };
 
+    // Aggressive local state update for fast double-enters
+    blocksRef.current = blocksRef.current.map(b => b.id === block.id ? updatedBlock : b);
     updateLocalBlock(block.id, () => updatedBlock);
     markBlockDirty(updatedBlock);
 
@@ -1319,14 +1401,15 @@ export function DocumentWorkspace({ documentId }) {
 
       // Delete THIS block and move cursor to end of previous editable block
       try {
-        markSaving();
-        await apiRequest(`/blocks/${targetId}`, {
-          method: "DELETE",
-          token: accessToken
+        const remaining = liveBlocks.filter((b) => b.id !== targetId);
+        blocksRef.current = remaining;
+
+        setBlocks(current => {
+          const next = current.filter((b) => b.id !== targetId);
+          blocksRef.current = next;
+          return next;
         });
-        const remaining = blocksRef.current.filter((b) => b.id !== targetId);
-        setBlocks(remaining);
-        markSaved();
+
         const prevEditable = remaining
           .slice(0, currentIdx)
           .reverse()
@@ -1338,6 +1421,18 @@ export function DocumentWorkspace({ documentId }) {
           };
         }
         setStatusText("Removed empty block.");
+
+        markSaving();
+        apiRequest(`/blocks/${targetId}`, {
+          method: "DELETE",
+          token: accessToken
+        }).then(() => {
+          markSaved();
+        }).catch((requestError) => {
+          setError(requestError.message);
+          markSaveError();
+          loadWorkspace();
+        });
       } catch (requestError) {
         setError(requestError.message);
         markSaveError();
