@@ -1,6 +1,6 @@
 # AI Log
 
-## 2026-04-13
+## 2026-04-13 (Day 1 - Foundation)
 **Tool:** Codex
 **What I asked for:**
 Scaffold Step 1 of the production block editor plan: monorepo setup, shared package, frontend shell, backend shell, and environment scaffolding.
@@ -14,7 +14,7 @@ Right now nothing
 **What I fixed:**
 Right now nothing
 
-## 2026-04-13
+## 2026-04-13 (Day 1 - Foundation)
 **Tool:** Codex
 **What I asked for:**
 Set up local PostgreSQL support for the project, including migrations, schema, and machine setup guidance.
@@ -28,7 +28,7 @@ The local PostgreSQL server is not running yet, so migrations and live DB verifi
 **What I fixed:**
 Right now nothing
 
-## 2026-04-13
+## 2026-04-13 (Day 1 - Foundation)
 **Tool:** Codex
 **What I asked for:**
 Implement Step 3 authentication with backend APIs, JWT and refresh token flow, and a minimal frontend to verify auth locally.
@@ -42,7 +42,7 @@ Two monorepo path bugs showed up earlier in env and migration loading; those wer
 **What I fixed:**
 Updated root path handling for env and migration resolution in the monorepo.
 
-## 2026-04-13
+## 2026-04-13 (Day 1 - Foundation)
 **Tool:** Codex
 **What I asked for:**
 Implement Step 4 document APIs with ownership checks and a minimal dashboard for create, list, rename, and delete flows.
@@ -56,7 +56,7 @@ Frontend env handling needed extra monorepo-specific fixes before the UI could c
 **What I fixed:**
 Adjusted web env loading so `NEXT_PUBLIC_*` values resolve correctly in the app workspace.
 
-## 2026-04-14
+## 2026-04-14 (Day 2 - Core Editor Implementation)
 **Tool:** Codex
 **What I asked for:**
 Implement Step 5 block-system foundation and replace the temporary verification UI with real home, auth, dashboard, and document pages.
@@ -70,7 +70,7 @@ Deployed CORS and frontend env behavior needed extra monorepo and cross-origin c
 **What I fixed:**
 Improved backend CORS origin handling, Render/Vercel cookie behavior, and frontend routing/session structure.
 
-## 2026-04-14
+## 2026-04-14 (Day 2 - Core Editor Implementation)
 **Tool:** Codex
 **What I asked for:**
 Turn the document page into a Notion-like continuous editor canvas, move to a lighter visual design, and add the core block editing behavior.
@@ -84,7 +84,7 @@ The earlier document workspace looked too much like isolated cards and did not f
 **What I fixed:**
 Rebuilt the editor UI around a continuous writing surface and updated the visual system to a softer light palette.
 
-## 2026-04-14
+## 2026-04-14 (Day 2 - Core Editor Implementation)
 **Tool:** Antigravity
 **What I asked for:**
 Redesign the entire frontend with a professional Notion-inspired UI — clean neutral palette, Inter font, sidebar dashboard, distraction-free editor, and modern component styles. Increase font and icon sizes for better readability.
@@ -98,7 +98,7 @@ Initial font and icon sizes were too small for a professional feel.
 **What I fixed:**
 Applied a full size-increase pass across all components — header height, brand icon, nav items, buttons, inputs, sidebar items, editor paragraph/heading text, code blocks, and slash menu. Removed inline style overrides that were fighting the CSS.
 
-## 2026-04-14
+## 2026-04-14 (Day 2 - Core Editor Implementation)
 **Tool:** Antigravity
 **What I asked for:**
 Multiple iterative UX improvements to the dashboard and editor: click-to-open document cards, remove open/preview buttons, add a visual block type selector bar, add a light border around the editable canvas, fix image drag bug, add a drag-to-delete trash zone, make the trash zone fixed/centered, widen the editor canvas, add time to the "last updated" subtitle, make topbar and block bar sticky, merge them into one unified bar, then replace the block bar with a centered glassmorphism floating pill, add hover borders on blocks.
@@ -122,7 +122,7 @@ Trash zone was not centered (parent transform interference). Block bar needed st
 **What I fixed:**
 Trash zone centering switched from `left:50%; transform:translateX(-50%)` to `left:0; right:0; margin:auto; width:fit-content`. Glassmorphism pill upgraded with indigo-tinted gradient, 1.5px indigo border, and colored box shadow. Block hover border changed to neutral grey `rgba(0,0,0,0.15)` with no background tint.
 
-## 2026-04-14
+## 2026-04-14 (Day 2 - Core Editor Implementation)
 **Tool:** Antigravity
 **What I asked for:**
 Fix "session expired" error for new users on auth pages, make drag-and-drop alive (visually shift blocks while dragging) and perfectly smooth, and add "+" buttons on hover between blocks to easily insert new blocks.
@@ -139,7 +139,7 @@ The first attempt at live-shifting used `requestAnimationFrame` which caused a f
 **What I fixed:**
 Switched `requestAnimationFrame` out for `flushSync(() => setBlocks(preview))` from `react-dom` to force synchronous DOM paints, making the block swapping feel instant and buttery smooth as the cursor moves over rows.
 
-## 2026-04-15 to 2026-04-16
+## 2026-04-15 (Day 3 - Frontend Improvement)
 **Tool:** Antigravity
 **What I asked for:**
 Iteratively improve the frontend UX and visual polish: redesign the landing page, improve dashboard search/create controls, refine the document shell into a left-sidebar layout, polish document-level states, and keep the editor feeling more product-like.
@@ -161,7 +161,7 @@ Iteratively improve the frontend UX and visual polish: redesign the landing page
 - Corrected the document shell so the main canvas scrolls properly and the share panel is not clipped.
 - Replaced loading-only cross-account behavior with a dedicated forbidden state in the document route.
 
-## 2026-04-15 to 2026-04-16
+## 2026-04-15 (Day 3 - Frontend Improvement)
 **Tool:** Codex
 **What I asked for:**
 Stabilize backend and editor behavior: autosave/versioning, auth/session flow explanations, image validation and image interactions, document ownership handling, export behavior, and multiple edge-case fixes across block editing.
@@ -184,7 +184,7 @@ Stabilize backend and editor behavior: autosave/versioning, auth/session flow ex
 - Tightened image validation to require real browser image load success and corrected image paragraph insertion behavior.
 - Simplified export back to a PDF-only action and fixed print styles to avoid extra blank pages.
 
-## 2026-04-16 to 2026-04-17
+## 2026-04-16 (Day 4- Autosave Implemented)
 **Tool:** Antigravity
 **What I asked for:**
 Stabilize the editor autosave system to prevent cursor jumping and data loss during rapid typing, Enter, and Backspace operations. Save should only happen after the user stops typing (all keys released + idle debounce).
@@ -207,7 +207,7 @@ Stabilize the editor autosave system to prevent cursor jumping and data loss dur
 - Kept keyboard-aware save gating for normal text typing.
 - Debounce timer remains at 1.5s for idle detection.
 
-## 2026-04-17
+## 2026-04-17 (Day 5 - Edge Cases checked and Final UI/UX Polish)
 **Tool:** Antigravity
 **What I asked for:**
 Redesign the landing page to look premium, animated, and modern while maintaining the existing violet/purple color theme.
