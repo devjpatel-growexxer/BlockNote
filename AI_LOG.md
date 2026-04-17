@@ -230,3 +230,16 @@ Redesign the landing page to look premium, animated, and modern while maintainin
 **What I fixed:**
 - Widened all landing sections (hero, features, block showcase) and removed the `content-shell` max-width constraint for the landing layout.
 - Replaced "collaborate" with "design" in the typewriter rotation.
+
+
+### 1. How you implemented Enter mid-block split — what AI gave you, what broke, what you fixed
+The AI generated this feature exceptionally well from the start, correctly extracting the cursor's `selectionStart` to accurately split the string into `currentText` and `newText`, and formulating the precise data structures required to insert the new block. The only piece that "broke" was React's rendering cycle lagging slightly behind the immediate typing events due to the delayed background API payload, which caused the cursor to occasionally lose focus. I fixed this by wiring up a synchronous React state update via `flushSync` so the newly chopped blocks mounted instantly before firing off the asynchronous API request.
+
+### 2. How you handled the order_index — did AI use integers first? What did you change?
+The AI correctly understood the requirements of a Notion-styled editor and skipped integers entirely, implementing an excellent floating-point fractional indexing system (midpoint order_index) right out of the box. By setting the initial boundary distances high, the AI's logic computed any new insertion strictly as `(prev.order_index + next.order_index) / 2`. This ensured that `O(1)` local inserts and network reordering occurred flawlessly without shifting adjacent peers. I barely had to change anything, only making minor adjustments to the trigger logic that rescales the indices when precision gaps fall too low.
+
+### 3. How you protected against cross-account document access
+At the backend layer, every document fetch, update, and deletion route dynamicaly strictly cross-references `req.user.id` against the document’s `owner_id`. Instead of returning a generic 404 (which obfuscates security leaks), I forced a strict `403 Forbidden` response for unauthorized document requests. On the Next.js frontend, opening a foreign document URL initially resulted in the `page` stalling indefinitely in its skeleton loader; I manually replaced this with a dedicated "Forbidden" UI error state triggered by trapping the 403 response in the layout effect, rendering full awareness instead of a silent hang.
+
+### 4. Every time you chose to write code manually instead of using AI — explain why
+While the AI successfully handled the heavy lifting for architecture, components, and logic generation, I chose to write code manually for highly specific or granular adjustments that were faster to type than to prompt. This primarily included fine-tuning pixel-perfect CSS spacing, adjusting responsive breakpoints, and tweaking minor state dependency arrays where jumping directly into the editor was simply the most efficient workflow to achieve the final polish.
