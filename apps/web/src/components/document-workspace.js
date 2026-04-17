@@ -401,7 +401,8 @@ export function DocumentWorkspace({ documentId }) {
     }
     function handleKeyUpCount(e) {
       activeKeysRef.current.delete(e.key);
-      if (activeKeysRef.current.size === 0 && dirtyBlocksRef.current.size > 0 && !isAutosaveRunningRef.current) {
+      // When all keys are released and there are unsaved changes, start an idle timer
+      if (activeKeysRef.current.size === 0 && dirtyBlocksRef.current.size > 0) {
         scheduleAutoSave();
       }
     }
@@ -815,7 +816,8 @@ export function DocumentWorkspace({ documentId }) {
 
   async function persistBlock(block) {
     markBlockDirty(block);
-    await flushAutosaveNow();
+    // Defer to the idle save cycle — keyup handler will trigger it
+    scheduleAutoSave();
   }
 
   async function handleBlur(blockId) {
@@ -873,12 +875,8 @@ export function DocumentWorkspace({ documentId }) {
       clearTimeout(autosaveTimerRef.current);
     }
     autosaveTimerRef.current = setTimeout(() => {
-      if (activeKeysRef.current.size > 0) {
-        // A key is currently held down. Pause save and wait for keyup event.
-        return;
-      }
       void flushAutosaveNow();
-    }, 1000);
+    }, 1500);
   }
 
   function handleTextChange(block, value) {
@@ -891,7 +889,7 @@ export function DocumentWorkspace({ documentId }) {
     };
     updateLocalBlock(block.id, () => nextBlock);
     markBlockDirty(nextBlock);
-    scheduleAutoSave();
+    // Don't schedule save here — keyup handler triggers it after user stops typing
   }
 
   function handleImageChange(block, value) {
@@ -911,7 +909,7 @@ export function DocumentWorkspace({ documentId }) {
     };
     updateLocalBlock(block.id, () => nextBlock);
     markBlockDirty(nextBlock);
-    scheduleAutoSave();
+    // Don't schedule save here — keyup handler triggers it after user stops typing
   }
 
   function handleImageLayoutChange(blockId, changes) {
@@ -1195,9 +1193,10 @@ export function DocumentWorkspace({ documentId }) {
     };
 
     updateLocalBlock(block.id, () => updatedBlock);
+    markBlockDirty(updatedBlock);
 
+    // Insert the new block optimistically — no network wait
     try {
-      await persistBlock(updatedBlock);
       await insertNewBlockAfter(index, nextType, right, 0);
       setStatusText("Split block.");
       setError("");
