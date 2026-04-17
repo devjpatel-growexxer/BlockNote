@@ -25,9 +25,26 @@ infra/
 
 ## Setup Instructions
 
-This repository does not currently include a `docker-compose.yml` file, so the equivalent local setup is: run PostgreSQL locally, then run the API and web apps in separate terminals.
+You can run the full stack locally using Docker Compose, or set it up manually.
 
-### Prerequisites
+### Using Docker Compose
+
+1. **Create the environment file**:
+   ```bash
+   cp .env.example .env
+   ```
+2. **Start the containers** (Frontend, Backend, PostgreSQL):
+   ```bash
+   docker compose up -d
+   ```
+   The web app will run on `http://localhost:3000` and the API on `http://localhost:4000/api/v1`.
+
+3. **Run migrations** (Wait for the API container to be healthy first):
+   ```bash
+   docker compose exec api npm run db:migrate
+   ```
+
+### Manual Setup Prerequisites
 
 - Node.js `>=24`
 - npm `>=11`
@@ -126,7 +143,6 @@ Reference: [.env.example](./.env.example)
 
 ## Known Issues
 
-- There is no `docker-compose.yml` yet, so local setup is manual rather than one-command container startup.
 - The automated test suite is not complete yet; most verification has been manual through the UI, Thunder Client, and targeted endpoint checks.
 - The API `build` script is currently a placeholder because the Express app runs directly from source.
 - Some UI interactions are highly customized and still have polish gaps, especially around complex editor hover states and drag interactions.
