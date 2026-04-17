@@ -232,31 +232,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── CTA banner ── */}
-        <section className="landing-bottom-cta">
-          <div className="landing-bottom-cta-glow" aria-hidden="true" />
-          <h2>Ready to start writing?</h2>
-          <p>Create your first document in seconds. No credit card required.</p>
-          <div className="landing-cta-row">
-            {isLoggedIn ? (
-              <Link className="landing-cta-primary" href="/dashboard">
-                Open Dashboard
-                <span className="landing-cta-arrow">→</span>
-              </Link>
-            ) : (
-              <>
-                <Link className="landing-cta-primary" href="/register">
-                  Get started free
-                  <span className="landing-cta-arrow">→</span>
-                </Link>
-                <Link className="landing-cta-secondary" href="/login">
-                  Log in
-                </Link>
-              </>
-            )}
-          </div>
-        </section>
-
         {/* ── Footer ── */}
         <footer className="landing-footer">
           <p>© {new Date().getFullYear()} {APP_NAME}. Open-source block editor.</p>
