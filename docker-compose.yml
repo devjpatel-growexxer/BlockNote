@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: blocknote_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: blocknote
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - blocknote_net
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: blocknote_api
+    restart: always
+    depends_on:
+      - db
+    environment:
+      # Database connection routed via Docker internal network
+      - DATABASE_URL=postgresql://postgres:password@db:5432/blocknote
+      - NODE_ENV=production
+      - PORT=4000
+      - WEB_ORIGIN=http://localhost:3000
+      # Change this in production
+      - JWT_SECRET=change_me_in_production_jwt_secret
+      - JWT_EXPIRES_IN=24h
+    ports:
+      - "4000:4000"
+    networks:
+      - blocknote_net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: blocknote_web
+    restart: always
+    depends_on:
+      - api
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Public URLs for frontend fetching
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    ports:
+      - "3000:3000"
+    networks:
+      - blocknote_net
+
+networks:
+  blocknote_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
